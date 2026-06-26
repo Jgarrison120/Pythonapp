@@ -15,7 +15,7 @@ function App() {
 
   // Add habit
   const addHabit = async () => {
-    if (!input) return;
+    if (!input.trim()) return;
 
     const res = await fetch(`${API}/habits`, {
       method: "POST",
@@ -35,7 +35,6 @@ function App() {
     });
 
     const updated = await res.json();
-
     setHabits(habits.map(h => h.id === id ? updated : h));
   };
 
@@ -49,54 +48,161 @@ function App() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Habit Tracker</h1>
+    <div style={styles.page}>
+      <div style={styles.container}>
 
-      {/* ADD INPUT */}
-      <input
-        id="habit-input"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      addHabit();
-    }
-  }}
-  placeholder="Enter a habit"
-/>
+        {/* HEADER */}
+        <h1 style={styles.title}>🧠 Habit Tracker</h1>
+        <p style={styles.subtitle}>Track your daily habits</p>
 
-      <button id="add-btn" onClick={addHabit}>
-        Add Habit
-      </button>
+        {/* INPUT */}
+        <div style={styles.inputRow}>
+          <input
+            id="habit-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addHabit();
+            }}
+            placeholder="Enter a habit..."
+            style={styles.input}
+          />
 
-      {/* HABIT LIST */}
-      <ul>
-        {habits.map((habit) => (
-          <li key={habit.id} data-testid="habit-item">
+          <button id="add-btn" onClick={addHabit} style={styles.addButton}>
+            + Add
+          </button>
+        </div>
 
-            <span
-              onClick={() => toggleHabit(habit.id)}
-              style={{
-                cursor: "pointer",
-                textDecoration: habit.completed ? "line-through" : "none"
-              }}
-              data-testid={`habit-${habit.id}`}
-            >
-              {habit.name}
-            </span>
+        {/* HABITS */}
+        <div style={styles.list}>
+          {habits.map((habit) => (
+            <div key={habit.id} style={styles.card} data-testid="habit-item">
 
-            <button
-              onClick={() => deleteHabit(habit.id)}
-              data-testid={`delete-${habit.id}`}
-            >
-              Delete
-            </button>
+              <span
+                onClick={() => toggleHabit(habit.id)}
+                style={{
+                  cursor: "pointer",
+                  textDecoration: habit.completed ? "line-through" : "none"
+                }}
+                data-testid={`habit-${habit.id}`}
+              >
+                <div>
+                  <div>{habit.name}</div>
 
-          </li>
-        ))}
-      </ul>
+                  <div style={{ fontSize: "12px", opacity: 0.6 }}>
+                    🔥 Streak: {habit.streak || 0}
+                  </div>
+
+                  <div style={{ fontSize: "10px", opacity: 0.4 }}>
+                    Last: {habit.lastCompleted || "Never"}
+                  </div>
+                </div>
+              </span>
+
+              <button
+                onClick={() => deleteHabit(habit.id)}
+                style={styles.deleteButton}
+                data-testid={`delete-${habit.id}`}
+              >
+                ✕
+              </button>
+
+            </div>
+          ))}
+        </div>
+
+      </div>
     </div>
   );
 }
 
 export default App;
+
+/* =======================
+   STYLES
+======================= */
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #0f172a, #1e293b)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontFamily: "Arial, sans-serif",
+  },
+
+  container: {
+    width: "420px",
+    background: "#111827",
+    padding: "24px",
+    borderRadius: "16px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
+    color: "white",
+  },
+
+  title: {
+    margin: 0,
+    textAlign: "center",
+    fontSize: "26px",
+  },
+
+  subtitle: {
+    textAlign: "center",
+    fontSize: "12px",
+    opacity: 0.6,
+    marginBottom: "20px",
+  },
+
+  inputRow: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "20px",
+  },
+
+  input: {
+    flex: 1,
+    padding: "10px",
+    borderRadius: "10px",
+    border: "1px solid #374151",
+    outline: "none",
+    background: "#1f2937",
+    color: "white",
+  },
+
+  addButton: {
+    padding: "10px 14px",
+    borderRadius: "10px",
+    border: "none",
+    background: "#3b82f6",
+    color: "white",
+    cursor: "pointer",
+  },
+
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
+
+  card: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    background: "#1f2937",
+    padding: "12px",
+    borderRadius: "10px",
+    transition: "0.2s",
+  },
+
+  habitText: {
+    cursor: "pointer",
+  },
+
+  deleteButton: {
+    background: "transparent",
+    border: "none",
+    color: "#ef4444",
+    fontSize: "18px",
+    cursor: "pointer",
+  },
+};
