@@ -78,35 +78,40 @@ function App() {
           {habits.map((habit) => (
             <div key={habit.id} style={styles.card} data-testid="habit-item">
 
-              <span
-                onClick={() => toggleHabit(habit.id)}
-                style={{
-                  cursor: "pointer",
-                  textDecoration: habit.completed ? "line-through" : "none"
-                }}
-                data-testid={`habit-${habit.id}`}
-              >
-                <div>
-                  <div>{habit.name}</div>
+              <div style={styles.habitRow}>
 
-                  <div style={{ fontSize: "12px", opacity: 0.6 }}>
-                    🔥 Streak: {habit.streak || 0}
-                  </div>
+  {/* LEFT SIDE: NAME */}
+  <div
+    onClick={() => toggleHabit(habit.id)}
+    style={styles.habitText}
+    data-testid={`habit-${habit.id}`}
+  >
+    <div style={{
+      textDecoration: habit.completed ? "line-through" : "none",
+      opacity: habit.completed ? 0.5 : 1
+    }}>
+      {habit.name}
+    </div>
+  </div>
 
-                  <div style={{ fontSize: "10px", opacity: 0.4 }}>
-                    Last: {habit.lastCompleted || "Never"}
-                  </div>
-                </div>
-              </span>
+  {/* RIGHT SIDE: BADGE + DELETE */}
+  <div style={styles.rightSide}>
 
-              <button
-                onClick={() => deleteHabit(habit.id)}
-                style={styles.deleteButton}
-                data-testid={`delete-${habit.id}`}
-              >
-                ✕
-              </button>
+    <div style={styles.streakBadge}>
+      🔥 {habit.streak || 0}
+    </div>
 
+    <button
+      onClick={() => deleteHabit(habit.id)}
+      style={styles.deleteButton}
+      data-testid={`delete-${habit.id}`}
+    >
+      ✕
+    </button>
+
+  </div>
+
+</div>
             </div>
           ))}
         </div>
@@ -198,11 +203,33 @@ const styles = {
     cursor: "pointer",
   },
 
+  rightSide: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "center",
+  },
+
+  streakBadge: {
+  background: "#f97316",
+  color: "white",
+  fontSize: "12px",
+  padding: "4px 8px",
+  borderRadius: "999px",
+  fontWeight: "bold",
+},
+
   deleteButton: {
     background: "transparent",
     border: "none",
     color: "#ef4444",
     fontSize: "18px",
     cursor: "pointer",
+  },
+
+  habitRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
   },
 };
