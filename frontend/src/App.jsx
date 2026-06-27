@@ -4,8 +4,7 @@ import Sidebar from "./components/Sidebar";
 import HabitPage from "./components/tracker/HabitPage";
 
 function App() {
-  // Example habits for now
-  const [habits, setHabits] = useState([
+  const [habits] = useState([
     {
       id: 1,
       name: "Exercise",
@@ -21,41 +20,13 @@ function App() {
       streak: 0,
       completion: 0,
       badges: []
-    },
-    {
-      id: 3,
-      name: "Drink Water",
-      goal: "Drink 96 oz",
-      streak: 0,
-      completion: 0,
-      badges: []
     }
   ]);
 
-  // Currently selected habit
   const [selectedHabitId, setSelectedHabitId] = useState(1);
 
   const selectedHabit =
-    habits.find((habit) => habit.id === selectedHabitId) || habits[0];
-
-  // Temporary add habit function
-  const addHabit = () => {
-    const name = prompt("Habit name?");
-
-    if (!name) return;
-
-    const newHabit = {
-      id: Date.now(),
-      name,
-      goal: "No goal set",
-      streak: 0,
-      completion: 0,
-      badges: []
-    };
-
-    setHabits([...habits, newHabit]);
-    setSelectedHabitId(newHabit.id);
-  };
+    habits.find(h => h.id === selectedHabitId) || habits[0];
 
   return (
     <div className="app">
@@ -64,7 +35,7 @@ function App() {
         habits={habits}
         selectedHabitId={selectedHabitId}
         setSelectedHabitId={setSelectedHabitId}
-        addHabit={addHabit}
+        addHabit={() => {}}
       />
 
       <HabitPage habit={selectedHabit} />
