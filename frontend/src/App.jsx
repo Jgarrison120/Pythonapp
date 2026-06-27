@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import Sidebar from "./components/layout/Sidebar";
+import Sidebar from "./components/Sidebar";
 import HabitPage from "./components/tracker/HabitPage";
 
 function App() {
