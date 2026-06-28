@@ -11,17 +11,26 @@ function HabitPage({ habit }) {
   }
 
   // =========================
+  // 🔑 STORAGE ISOLATION FIX
+  // =========================
+  const STORAGE_KEY = `habit-tracker-${habit.id}`;
+
+  // =========================
   // STATE
   // =========================
   const [completionMap, setCompletionMap] = useState(() => {
-    const saved = localStorage.getItem(`habit-${habit.id}`);
+    const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : {};
   });
 
   // =========================
   // TOGGLE DAY
   // =========================
-  const toggleDay = (key) => {
+  const toggleDay = (date) => {
+    const key = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+      .toISOString()
+      .split("T")[0];
+
     setCompletionMap((prev) => {
       const current = prev[key] || 0;
 
@@ -37,39 +46,34 @@ function HabitPage({ habit }) {
         [key]: next,
       };
 
-      localStorage.setItem(
-        `habit-${habit.id}`,
-        JSON.stringify(updated)
-      );
+      // 🔥 FIXED: now isolated per habit
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
       return updated;
     });
   };
 
   // =========================
-  // STREAK CALCULATOR
+  // STREAK CALCULATOR (STABLE)
   // =========================
   const calculateStreak = () => {
-    const entries = Object.entries(completionMap);
-
-    const sortedDates = entries
-      .filter(([_, value]) => value >= 0.75)
-      .map(([date]) => new Date(date))
-      .sort((a, b) => b - a);
-
     let streak = 0;
-    let current = new Date();
+    const today = new Date();
 
-    for (let i = 0; i < sortedDates.length; i++) {
-      const d = sortedDates[i];
+    while (true) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - streak);
 
-      const diff = Math.floor(
-        (current - d) / (1000 * 60 * 60 * 24)
-      );
+      const key = new Date(
+        checkDate.getFullYear(),
+        checkDate.getMonth(),
+        checkDate.getDate()
+      )
+        .toISOString()
+        .split("T")[0];
 
-      if (diff === 0 || diff === 1) {
+      if (completionMap[key] >= 0.75) {
         streak++;
-        current = d;
       } else {
         break;
       }
@@ -93,23 +97,23 @@ function HabitPage({ habit }) {
   };
 
   // =========================
-  // 📊 ANALYTICS (NEW SAAS LAYER)
+  // ANALYTICS
   // =========================
   const streak = calculateStreak();
   const badges = getBadges(streak);
 
-  const bestStreak = streak; // placeholder (upgrade later)
-  const completionValues = Object.values(completionMap);
+  const values = Object.values(completionMap);
+
   const completionRate =
-    completionValues.length === 0
+    values.length === 0
       ? 0
       : Math.round(
-          (completionValues.reduce((a, b) => a + b, 0) /
-            completionValues.length) *
-            100
+          (values.reduce((a, b) => a + b, 0) / values.length) * 100
         );
 
   const daysTracked = Object.keys(completionMap).length;
+
+  const bestStreak = streak;
 
   return (
     <div style={styles.page}>
@@ -124,9 +128,7 @@ function HabitPage({ habit }) {
         </div>
       </div>
 
-      {/* =========================
-          📊 ANALYTICS DASHBOARD
-      ========================= */}
+      {/* ANALYTICS */}
       <div style={styles.analyticsGrid}>
 
         <div style={styles.analyticsCard}>
@@ -202,10 +204,6 @@ function HabitPage({ habit }) {
 }
 
 export default HabitPage;
-
-// =========================
-// STYLES
-// =========================
 const styles = {
   page: {
     flex: 1,
@@ -283,3 +281,4 @@ const styles = {
     textAlign: "center",
   },
 };
+
