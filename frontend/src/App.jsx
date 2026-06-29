@@ -38,7 +38,10 @@ function App() {
         addHabit={() => {}}
       />
 
-      <HabitPage habit={selectedHabit} />
+      <HabitPage
+  key={selectedHabit.id}
+  habit={selectedHabit}
+/>
 
     </div>
   );

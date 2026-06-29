@@ -1,20 +1,40 @@
 import { useMemo } from "react";
+import { calendarStyles as styles } from "./HabitCalendarStyles";
 
-function HabitCalendar({ completionMap = {}, toggleDay }) {
-  const months = [
-    "Jan","Feb","Mar","Apr","May","Jun",
-    "Jul","Aug","Sep","Oct","Nov","Dec"
-  ];
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 
-  // =========================
-  // DATE HELPERS (CRITICAL FIX)
-  // =========================
-  const formatDate = (date) => {
-    const d = new Date(date);
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-      .toISOString()
-      .split("T")[0];
-  };
+const DAYS = Array.from({ length: 31 }, (_, index) => index + 1);
+
+function HabitCalendar({ completionMap = {}, toggleDay, year = 2026 }) {
+  const calendarRows = useMemo(() => {
+    return DAYS.map((day) => {
+      return MONTHS.map((month, monthIndex) => {
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+        if (day > daysInMonth) {
+          return {
+            key: `${year}-${monthIndex}-${day}-empty`,
+            isValid: false,
+            day,
+            month,
+          };
+        }
+
+        const date = new Date(year, monthIndex, day);
+
+        return {
+          key: formatDate(date),
+          isValid: true,
+          date,
+          day,
+          month,
+        };
+      });
+    });
+  }, [year]);
 
   const getColor = (value) => {
     if (value === 0) return "#1f2937";
@@ -24,109 +44,66 @@ function HabitCalendar({ completionMap = {}, toggleDay }) {
     return "#1d4ed8";
   };
 
-  // =========================
-  // GRID DATA
-  // =========================
-  const days = useMemo(() => {
-    return Array.from({ length: 31 }, (_, i) => i + 1);
-  }, []);
-
   return (
-    <div>
-
-      {/* =========================
-          MONTH HEADER ROW
-      ========================= */}
-      <div style={styles.monthRow}>
-        <div style={styles.cornerCell} />
-
-        {months.map((m) => (
-          <div key={m} style={styles.monthCell}>
-            {m}
-          </div>
-        ))}
+    <div style={styles.wrapper}>
+      <div style={styles.header}>
+        <h3 style={styles.title}>📅 Yearly Habit Calendar</h3>
+        <span style={styles.yearBadge}>{year}</span>
       </div>
 
-      {/* =========================
-          GRID BODY
-      ========================= */}
-      <div>
-        {days.map((day) => (
-          <div key={day} style={styles.row}>
+      <div style={styles.calendar}>
+        <div style={styles.monthHeaderRow}>
+          <div style={styles.dayHeaderCell}>Day</div>
 
-            {/* Day label */}
-            <div style={styles.dayLabel}>
-              {day}
+          {MONTHS.map((month) => (
+            <div key={month} style={styles.monthHeaderCell}>
+              {month}
             </div>
+          ))}
+        </div>
 
-            {/* Month cells */}
-            {months.map((_, monthIndex) => {
-              const date = new Date(2026, monthIndex, day);
+        {calendarRows.map((row, rowIndex) => (
+          <div key={DAYS[rowIndex]} style={styles.calendarRow}>
+            <div style={styles.dayLabel}>{DAYS[rowIndex]}</div>
 
-              const key = formatDate(date);
-              const value = completionMap[key] || 0;
+            {row.map((cell) => {
+              if (!cell.isValid) {
+                return (
+                  <div
+                    key={cell.key}
+                    style={styles.disabledCell}
+                    title={`${cell.month} ${cell.day} does not exist`}
+                  />
+                );
+              }
+
+              const value = completionMap[cell.key] || 0;
 
               return (
-                <div
-                  key={key}
+                <button
+                  key={cell.key}
+                  type="button"
+                  title={`${cell.month} ${cell.day}, ${year}`}
                   style={{
                     ...styles.cell,
                     background: getColor(value),
                   }}
-                  onClick={() => toggleDay(date)}
+                  onClick={() => toggleDay(cell.date)}
                 />
               );
             })}
           </div>
         ))}
       </div>
-
     </div>
   );
 }
 
+function formatDate(date) {
+  const d = new Date(date);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    .toISOString()
+    .split("T")[0];
+}
+
 export default HabitCalendar;
-
-const styles = {
-  monthRow: {
-    display: "grid",
-    gridTemplateColumns: "40px repeat(12, 22px)",
-    gap: "4px",
-    marginBottom: "6px",
-    alignItems: "center",
-  },
-
-  row: {
-    display: "grid",
-    gridTemplateColumns: "40px repeat(12, 22px)",
-    gap: "4px",
-    alignItems: "center",
-  },
-
-  cornerCell: {
-    width: "40px",
-  },
-
-  monthCell: {
-    textAlign: "center",
-    fontSize: "12px",
-    opacity: 0.7,
-  },
-
-  dayLabel: {
-    width: "40px",
-    fontSize: "12px",
-    opacity: 0.6,
-  },
-
-  cell: {
-    width: "18px",
-    height: "18px",
-    borderRadius: "4px",
-    cursor: "pointer",
-    justifySelf: "center",
-    background: "#1f2937",
-    border: "1px solid #374151",
-    transition: "0.15s ease",
-  },
-};

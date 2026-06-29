@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import HabitCalendar from "./HabitCalendar";
 
 function HabitPage({ habit }) {
@@ -18,11 +18,16 @@ function HabitPage({ habit }) {
   // =========================
   // STATE
   // =========================
-  const [completionMap, setCompletionMap] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [completionMap, setCompletionMap] = useState({});
+useEffect(() => {
+  const saved = localStorage.getItem(STORAGE_KEY);
 
+  if (saved) {
+    setCompletionMap(JSON.parse(saved));
+  } else {
+    setCompletionMap({});
+  }
+}, [STORAGE_KEY]);
   // =========================
   // TOGGLE DAY
   // =========================
@@ -57,30 +62,34 @@ function HabitPage({ habit }) {
   // STREAK CALCULATOR (STABLE)
   // =========================
   const calculateStreak = () => {
-    let streak = 0;
-    const today = new Date();
+  const completedKeys = Object.entries(completionMap)
+    .filter(([_, value]) => value >= 0.75)
+    .map(([date]) => date)
+    .sort()
+    .reverse();
 
-    while (true) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - streak);
+  if (completedKeys.length === 0) return 0;
 
-      const key = new Date(
-        checkDate.getFullYear(),
-        checkDate.getMonth(),
-        checkDate.getDate()
-      )
-        .toISOString()
-        .split("T")[0];
+  let streak = 1;
+  let currentDate = new Date(completedKeys[0]);
 
-      if (completionMap[key] >= 0.75) {
-        streak++;
-      } else {
-        break;
-      }
+  for (let i = 1; i < completedKeys.length; i++) {
+    const previousDate = new Date(completedKeys[i]);
+
+    const diff = Math.round(
+      (currentDate - previousDate) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diff === 1) {
+      streak++;
+      currentDate = previousDate;
+    } else {
+      break;
     }
+  }
 
-    return streak;
-  };
+  return streak;
+};
 
   // =========================
   // BADGES
@@ -96,25 +105,81 @@ function HabitPage({ habit }) {
     return badges;
   };
 
+  const calculateBestStreak = () => {
+  const completedDates = Object.entries(completionMap)
+    .filter(([_, value]) => value >= 0.75)
+    .map(([date]) => date)
+    .sort();
+
+  if (completedDates.length === 0) return 0;
+
+  let best = 1;
+  let current = 1;
+
+  for (let i = 1; i < completedDates.length; i++) {
+    const prev = new Date(completedDates[i - 1]);
+    const curr = new Date(completedDates[i]);
+
+    const diff = Math.round(
+      (curr - prev) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diff === 1) {
+      current++;
+      best = Math.max(best, current);
+    } else {
+      current = 1;
+    }
+  }
+
+  return best;
+};
+
+const getCompletedDays = () => {
+  return Object.values(completionMap).filter((value) => value >= 0.75).length;
+};
+
+const getYearCompletionRate = () => {
+  const completed = getCompletedDays();
+  return Math.round((completed / 365) * 100);
+};
+
+const getBestMonth = () => {
+  const monthTotals = Array(12).fill(0);
+
+  Object.entries(completionMap).forEach(([date, value]) => {
+    if (value >= 0.75) {
+      const month = new Date(date).getMonth();
+      monthTotals[month]++;
+    }
+  });
+
+  const bestIndex = monthTotals.indexOf(Math.max(...monthTotals));
+
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+
+  return monthTotals[bestIndex] > 0
+    ? `${monthNames[bestIndex]} (${monthTotals[bestIndex]} days)`
+    : "None yet";
+};
+
   // =========================
   // ANALYTICS
   // =========================
   const streak = calculateStreak();
   const badges = getBadges(streak);
+  const bestStreak = calculateBestStreak();
+  const completedDays = getCompletedDays();
+  const yearCompletionRate = getYearCompletionRate();
+  const bestMonth = getBestMonth();
 
   const values = Object.values(completionMap);
 
-  const completionRate =
-    values.length === 0
-      ? 0
-      : Math.round(
-          (values.reduce((a, b) => a + b, 0) / values.length) * 100
-        );
-
-  const daysTracked = Object.keys(completionMap).length;
-
-  const bestStreak = streak;
-
+ 
+   
   return (
     <div style={styles.page}>
 
@@ -143,12 +208,12 @@ function HabitPage({ habit }) {
 
         <div style={styles.analyticsCard}>
           <h4>📈 Completion Rate</h4>
-          <p>{completionRate}%</p>
+          <p>{yearCompletionRate}%</p>
         </div>
 
         <div style={styles.analyticsCard}>
           <h4>📅 Days Tracked</h4>
-          <p>{daysTracked}</p>
+          <p>{completedDays}</p>
         </div>
 
       </div>
@@ -193,11 +258,12 @@ function HabitPage({ habit }) {
 
       {/* GRID */}
       <div style={styles.gridCard}>
-        <HabitCalendar
-          completionMap={completionMap}
-          toggleDay={toggleDay}
-        />
-      </div>
+  <HabitCalendar
+    completionMap={completionMap}
+    toggleDay={toggleDay}
+    year={2026}
+  />
+</div>
 
     </div>
   );
@@ -267,11 +333,11 @@ const styles = {
   },
 
   analyticsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "12px",
-    marginBottom: "20px",
-  },
+  display: "grid",
+  gridTemplateColumns: "repeat(5, 1fr)",
+  gap: "12px",
+  marginBottom: "20px",
+},
 
   analyticsCard: {
     background: "#111827",
