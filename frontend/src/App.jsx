@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import Sidebar from "./components/Sidebar";
 import HabitPage from "./components/tracker/HabitPage";
 
 function App() {
-  const [habits, setHabits] = useState([
+
+  const defaultHabits = [
     {
       id: 1,
       name: "Exercise",
@@ -21,9 +22,20 @@ function App() {
       completion: 0,
       badges: []
     }
-  ]);
+  ];
+
+  const [habits, setHabits] = useState(() => {
+    const saved = localStorage.getItem("habits-list");
+    return saved ? JSON.parse(saved) : defaultHabits;
+  });
 
   const [selectedHabitId, setSelectedHabitId] = useState(1);
+  useEffect(() => {
+  localStorage.setItem(
+    "habits-list",
+    JSON.stringify(habits)
+  );
+}, [habits]);
 
   const selectedHabit =
     habits.find((h) => h.id === selectedHabitId) || habits[0];
