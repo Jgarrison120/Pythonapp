@@ -1,40 +1,29 @@
 import { useState, useEffect } from "react";
 import HabitCalendar from "./HabitCalendar";
 
-function HabitPage({ habit }) {
+function HabitPage({ habit, updateHabit, deleteHabit }) {
   if (!habit) {
-    return (
-      <div style={styles.empty}>
-        No habit selected
-      </div>
-    );
+    return <div style={styles.empty}>No habit selected</div>;
   }
 
-  // =========================
-  // 🔑 STORAGE ISOLATION FIX
-  // =========================
   const STORAGE_KEY = `habit-tracker-${habit.id}`;
 
-  // =========================
-  // STATE
-  // =========================
   const [completionMap, setCompletionMap] = useState({});
-useEffect(() => {
-  const saved = localStorage.getItem(STORAGE_KEY);
 
-  if (saved) {
-    setCompletionMap(JSON.parse(saved));
-  } else {
-    setCompletionMap({});
-  }
-}, [STORAGE_KEY]);
-  // =========================
-  // TOGGLE DAY
-  // =========================
-  const toggleDay = (date) => {
-    const key = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    setCompletionMap(saved ? JSON.parse(saved) : {});
+  }, [STORAGE_KEY]);
+
+  const formatDate = (date) => {
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate())
       .toISOString()
       .split("T")[0];
+  };
+
+  const toggleDay = (date) => {
+    const key = formatDate(date);
 
     setCompletionMap((prev) => {
       const current = prev[key] || 0;
@@ -46,54 +35,102 @@ useEffect(() => {
         current === 0.75 ? 1 :
         0;
 
-      const updated = {
-        ...prev,
-        [key]: next,
-      };
+      const updated = { ...prev, [key]: next };
 
-      // 🔥 FIXED: now isolated per habit
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
       return updated;
     });
   };
 
-  // =========================
-  // STREAK CALCULATOR (STABLE)
-  // =========================
   const calculateStreak = () => {
-  const completedKeys = Object.entries(completionMap)
-    .filter(([_, value]) => value >= 0.75)
-    .map(([date]) => date)
-    .sort()
-    .reverse();
+    const completedKeys = Object.entries(completionMap)
+      .filter(([_, value]) => value >= 0.75)
+      .map(([date]) => date)
+      .sort()
+      .reverse();
 
-  if (completedKeys.length === 0) return 0;
+    if (completedKeys.length === 0) return 0;
 
-  let streak = 1;
-  let currentDate = new Date(completedKeys[0]);
+    let streak = 1;
+    let currentDate = new Date(completedKeys[0]);
 
-  for (let i = 1; i < completedKeys.length; i++) {
-    const previousDate = new Date(completedKeys[i]);
+    for (let i = 1; i < completedKeys.length; i++) {
+      const previousDate = new Date(completedKeys[i]);
 
-    const diff = Math.round(
-      (currentDate - previousDate) / (1000 * 60 * 60 * 24)
-    );
+      const diff = Math.round(
+        (currentDate - previousDate) / (1000 * 60 * 60 * 24)
+      );
 
-    if (diff === 1) {
-      streak++;
-      currentDate = previousDate;
-    } else {
-      break;
+      if (diff === 1) {
+        streak++;
+        currentDate = previousDate;
+      } else {
+        break;
+      }
     }
-  }
 
-  return streak;
-};
+    return streak;
+  };
 
-  // =========================
-  // BADGES
-  // =========================
+  const calculateBestStreak = () => {
+    const completedDates = Object.entries(completionMap)
+      .filter(([_, value]) => value >= 0.75)
+      .map(([date]) => date)
+      .sort();
+
+    if (completedDates.length === 0) return 0;
+
+    let best = 1;
+    let current = 1;
+
+    for (let i = 1; i < completedDates.length; i++) {
+      const prev = new Date(completedDates[i - 1]);
+      const curr = new Date(completedDates[i]);
+
+      const diff = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+
+      if (diff === 1) {
+        current++;
+        best = Math.max(best, current);
+      } else {
+        current = 1;
+      }
+    }
+
+    return best;
+  };
+
+  const getCompletedDays = () => {
+    return Object.values(completionMap).filter((value) => value >= 0.75).length;
+  };
+
+  const getYearCompletionRate = () => {
+    return Math.round((getCompletedDays() / 365) * 100);
+  };
+
+  const getBestMonth = () => {
+    const monthTotals = Array(12).fill(0);
+
+    Object.entries(completionMap).forEach(([date, value]) => {
+      if (value >= 0.75) {
+        const month = new Date(date).getMonth();
+        monthTotals[month]++;
+      }
+    });
+
+    const bestIndex = monthTotals.indexOf(Math.max(...monthTotals));
+
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+
+    return monthTotals[bestIndex] > 0
+      ? `${monthNames[bestIndex]} (${monthTotals[bestIndex]} days)`
+      : "None yet";
+  };
+
   const getBadges = (streak) => {
     const badges = [];
 
@@ -105,147 +142,95 @@ useEffect(() => {
     return badges;
   };
 
-  const calculateBestStreak = () => {
-  const completedDates = Object.entries(completionMap)
-    .filter(([_, value]) => value >= 0.75)
-    .map(([date]) => date)
-    .sort();
-
-  if (completedDates.length === 0) return 0;
-
-  let best = 1;
-  let current = 1;
-
-  for (let i = 1; i < completedDates.length; i++) {
-    const prev = new Date(completedDates[i - 1]);
-    const curr = new Date(completedDates[i]);
-
-    const diff = Math.round(
-      (curr - prev) / (1000 * 60 * 60 * 24)
-    );
-
-    if (diff === 1) {
-      current++;
-      best = Math.max(best, current);
-    } else {
-      current = 1;
-    }
-  }
-
-  return best;
-};
-
-const getCompletedDays = () => {
-  return Object.values(completionMap).filter((value) => value >= 0.75).length;
-};
-
-const getYearCompletionRate = () => {
-  const completed = getCompletedDays();
-  return Math.round((completed / 365) * 100);
-};
-
-const getBestMonth = () => {
-  const monthTotals = Array(12).fill(0);
-
-  Object.entries(completionMap).forEach(([date, value]) => {
-    if (value >= 0.75) {
-      const month = new Date(date).getMonth();
-      monthTotals[month]++;
-    }
-  });
-
-  const bestIndex = monthTotals.indexOf(Math.max(...monthTotals));
-
-  const monthNames = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-  ];
-
-  return monthTotals[bestIndex] > 0
-    ? `${monthNames[bestIndex]} (${monthTotals[bestIndex]} days)`
-    : "None yet";
-};
-
-  // =========================
-  // ANALYTICS
-  // =========================
   const streak = calculateStreak();
-  const badges = getBadges(streak);
   const bestStreak = calculateBestStreak();
   const completedDays = getCompletedDays();
   const yearCompletionRate = getYearCompletionRate();
   const bestMonth = getBestMonth();
+  const badges = getBadges(streak);
 
-  const values = Object.values(completionMap);
-
- 
-   
   return (
     <div style={styles.page}>
-
-      {/* HEADER */}
       <div style={styles.header}>
-        <h1 style={styles.title}>{habit.name}</h1>
-        <p style={styles.subtitle}>{habit.goal}</p>
+        <div>
+          <h1 style={styles.title}>{habit.name}</h1>
+          <p style={styles.subtitle}>{habit.goal}</p>
 
-        <div style={{ opacity: 0.7, marginTop: 5 }}>
-          🔥 Current Streak: {streak} days
+          <div style={{ opacity: 0.7, marginTop: 5 }}>
+            🔥 Current Streak: {streak} days
+          </div>
+        </div>
+
+        <div style={styles.toolbar}>
+          <button
+            style={styles.toolbarButton}
+            onClick={() => {
+              const name = prompt("New habit name?", habit.name);
+              if (name && name.trim()) {
+                updateHabit(habit.id, { name: name.trim() });
+              }
+            }}
+          >
+            ✏️ Rename
+          </button>
+
+          <button
+            style={styles.toolbarButton}
+            onClick={() => {
+              const goal = prompt("New goal?", habit.goal);
+              if (goal && goal.trim()) {
+                updateHabit(habit.id, { goal: goal.trim() });
+              }
+            }}
+          >
+            🎯 Edit Goal
+          </button>
+
+          <button
+            style={styles.deleteButton}
+            onClick={() => deleteHabit(habit.id)}
+          >
+            🗑 Delete
+          </button>
         </div>
       </div>
 
-      {/* ANALYTICS */}
       <div style={styles.analyticsGrid}>
-
         <div style={styles.analyticsCard}>
           <h4>🔥 Current Streak</h4>
-          <p>{streak}</p>
+          <p>{streak} days</p>
         </div>
 
         <div style={styles.analyticsCard}>
           <h4>🏆 Best Streak</h4>
-          <p>{bestStreak}</p>
+          <p>{bestStreak} days</p>
         </div>
 
         <div style={styles.analyticsCard}>
-          <h4>📈 Completion Rate</h4>
+          <h4>✅ Completed Days</h4>
+          <p>{completedDays}</p>
+        </div>
+
+        <div style={styles.analyticsCard}>
+          <h4>📈 Year Progress</h4>
           <p>{yearCompletionRate}%</p>
         </div>
 
         <div style={styles.analyticsCard}>
-          <h4>📅 Days Tracked</h4>
-          <p>{completedDays}</p>
+          <h4>📅 Best Month</h4>
+          <p>{bestMonth}</p>
         </div>
-
       </div>
 
-      {/* STATS */}
       <div style={styles.cardRow}>
-
-        <div style={styles.card}>
-          <h3>🔥 Streak</h3>
-          <p style={styles.bigText}>{streak}</p>
-        </div>
-
-        <div style={styles.card}>
-          <h3>📊 Completion</h3>
-          <p style={styles.bigText}>{habit.completion}%</p>
-        </div>
-
         <div style={styles.card}>
           <h3>🏅 Badges</h3>
+
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             {badges.length > 0 ? (
-              badges.map((b, i) => (
-                <span
-                  key={i}
-                  style={{
-                    background: "#2563eb",
-                    padding: "4px 10px",
-                    borderRadius: "999px",
-                    fontSize: "12px",
-                  }}
-                >
-                  {b}
+              badges.map((badge, index) => (
+                <span key={index} style={styles.badge}>
+                  {badge}
                 </span>
               ))
             ) : (
@@ -253,23 +238,21 @@ const getBestMonth = () => {
             )}
           </div>
         </div>
-
       </div>
 
-      {/* GRID */}
       <div style={styles.gridCard}>
-  <HabitCalendar
-    completionMap={completionMap}
-    toggleDay={toggleDay}
-    year={2026}
-  />
-</div>
-
+        <HabitCalendar
+          completionMap={completionMap}
+          toggleDay={toggleDay}
+          year={2026}
+        />
+      </div>
     </div>
   );
 }
 
 export default HabitPage;
+
 const styles = {
   page: {
     flex: 1,
@@ -293,6 +276,10 @@ const styles = {
   },
 
   header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "16px",
     marginBottom: "20px",
   },
 
@@ -303,6 +290,45 @@ const styles = {
 
   subtitle: {
     opacity: 0.7,
+  },
+
+  toolbar: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+
+  toolbarButton: {
+    background: "#1f2937",
+    color: "white",
+    border: "1px solid #374151",
+    padding: "9px 12px",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  deleteButton: {
+    background: "#dc2626",
+    color: "white",
+    border: "none",
+    padding: "9px 12px",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  analyticsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gap: "12px",
+    marginBottom: "20px",
+  },
+
+  analyticsCard: {
+    background: "#111827",
+    padding: "15px",
+    borderRadius: "12px",
+    border: "1px solid #1f2937",
+    textAlign: "center",
   },
 
   cardRow: {
@@ -320,9 +346,11 @@ const styles = {
     borderRadius: "12px",
   },
 
-  bigText: {
-    fontSize: "26px",
-    marginTop: "10px",
+  badge: {
+    background: "#2563eb",
+    padding: "4px 10px",
+    borderRadius: "999px",
+    fontSize: "12px",
   },
 
   gridCard: {
@@ -331,20 +359,4 @@ const styles = {
     borderRadius: "12px",
     marginTop: "20px",
   },
-
-  analyticsGrid: {
-  display: "grid",
-  gridTemplateColumns: "repeat(5, 1fr)",
-  gap: "12px",
-  marginBottom: "20px",
-},
-
-  analyticsCard: {
-    background: "#111827",
-    padding: "15px",
-    borderRadius: "12px",
-    border: "1px solid #1f2937",
-    textAlign: "center",
-  },
 };
-
