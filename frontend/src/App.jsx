@@ -366,9 +366,10 @@ export default App;
 
 const styles = {
   shell: {
-    minHeight: "100vh",
-    background: "#0f172a",
-  },
+  height: "100vh",
+  overflow: "hidden",
+  background: "#0f172a",
+},
 
   topBar: {
     height: "56px",
@@ -382,8 +383,10 @@ const styles = {
   },
 
   main: {
-    height: "calc(100vh - 56px)",
-  },
+  height: "calc(100vh - 56px)",
+  display: "flex",
+  overflow: "hidden",
+},
 
   actions: {
     display: "flex",

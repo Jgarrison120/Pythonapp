@@ -167,10 +167,6 @@ function HabitPage({
       }
     />
 
-    <div style={styles.streakText}>
-      🔥 Current Streak: {streak} days
-    </div>
-
     {habit.isDirty && (
       <div style={styles.unsavedText}>
         Unsaved changes for this habit
@@ -260,12 +256,13 @@ const styles = {
   page: {
     flex: 1,
     minWidth: 0,
-    height: "100vh",
-    overflow: "auto",
+    height: "100%",
+    overflowY: "auto",
+    overflowX: "hidden",
     padding: "20px",
     background: "#0f172a",
     color: "white",
-  },
+},
 
   empty: {
     flex: 1,
@@ -293,11 +290,6 @@ const styles = {
 
   subtitle: {
     opacity: 0.7,
-  },
-
-  streakText: {
-    opacity: 0.7,
-    marginTop: 5,
   },
 
   unsavedText: {
