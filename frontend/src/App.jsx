@@ -135,6 +135,46 @@ function App() {
     resetDraftState();
   };
 
+  const deleteJournal = async () => {
+  if (!selectedJournalId) return;
+
+  if (journals.length <= 1) {
+    alert("You must have at least one journal.");
+    return;
+  }
+
+  const selectedJournal = journals.find(
+    (journal) => journal.id === selectedJournalId
+  );
+
+  const confirmDelete = window.confirm(
+    `Delete "${selectedJournal?.name}" and all habits inside it?`
+  );
+
+  if (!confirmDelete) return;
+
+  const res = await fetch(`${API}/journals/${selectedJournalId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    alert(data.detail || "Could not delete journal.");
+    return;
+  }
+
+  const updatedJournals = journals.filter(
+    (journal) => journal.id !== selectedJournalId
+  );
+
+  setJournals(updatedJournals);
+
+  const nextJournal = updatedJournals[0];
+
+  setSelectedJournalId(nextJournal.id);
+  await loadHabits(nextJournal.id);
+};
+
   const addHabit = () => {
     const name = prompt("Habit name?");
     if (!name || !name.trim()) return;
@@ -352,7 +392,11 @@ function App() {
     <div style={styles.shell}>
       <div style={styles.topBar}>
         <div>
-          <div style={styles.appTitle}>Habit Tracker</div>
+          <div style={styles.appTitle}>
+  {currentUser?.username
+    ? `${currentUser.username}'s Habit Tracker`
+    : "Habit Tracker"}
+</div>
           <div style={styles.statusText}>
             {hasUnsavedChanges
               ? "Draft changes waiting to be saved"
@@ -375,6 +419,10 @@ function App() {
 
           <button style={styles.secondaryButton} onClick={addJournal}>
             + Journal
+          </button>
+
+          <button style={styles.dangerButton} onClick={deleteJournal}>
+            Delete Journal
           </button>
 
           <button style={styles.newHabitButton} onClick={addHabit}>
@@ -555,4 +603,14 @@ const styles = {
     justifyContent: "center",
     fontSize: "16px",
   },
+
+  dangerButton: {
+  background: "#7f1d1d",
+  color: "white",
+  border: "1px solid #991b1b",
+  padding: "10px 16px",
+  borderRadius: "10px",
+  cursor: "pointer",
+  fontWeight: 600,
+},
 };

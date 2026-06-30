@@ -409,6 +409,52 @@ def get_habits_for_journal(journal_id: int):
     conn.close()
     return result
 
+@app.delete("/journals/{journal_id}")
+def delete_journal(journal_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM journals WHERE id = ?", (journal_id,))
+    journal = cursor.fetchone()
+
+    if not journal:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Journal not found")
+
+    cursor.execute(
+        "SELECT COUNT(*) AS count FROM journals WHERE user_id = ?",
+        (journal["user_id"],)
+    )
+
+    journal_count = cursor.fetchone()["count"]
+
+    if journal_count <= 1:
+        conn.close()
+        raise HTTPException(
+            status_code=400,
+            detail="You must have at least one journal"
+        )
+
+    cursor.execute(
+        "SELECT id FROM habits WHERE journal_id = ?",
+        (journal_id,)
+    )
+
+    habits = cursor.fetchall()
+
+    for habit in habits:
+        cursor.execute(
+            "DELETE FROM habit_entries WHERE habit_id = ?",
+            (habit["id"],)
+        )
+
+    cursor.execute("DELETE FROM habits WHERE journal_id = ?", (journal_id,))
+    cursor.execute("DELETE FROM journals WHERE id = ?", (journal_id,))
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "Journal deleted"}
 
 @app.get("/habits")
 def get_habits():
