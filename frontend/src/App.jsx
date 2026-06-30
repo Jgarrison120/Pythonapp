@@ -293,11 +293,23 @@ function App() {
     <div style={styles.shell}>
       <div style={styles.topBar}>
         <div>
-          <strong>Habit Tracker</strong>
-          {hasUnsavedChanges && (
-            <span style={styles.unsavedText}> Unsaved changes</span>
-          )}
-        </div>
+    <div style={{
+        fontSize:22,
+        fontWeight:700,
+    }}>
+        Habit Tracker
+    </div>
+
+    <div style={{
+        fontSize:13,
+        color:"#94a3b8",
+        marginTop:2,
+    }}>
+        {hasUnsavedChanges
+            ? "Draft changes waiting to be saved"
+            : "Everything is up to date"}
+    </div>
+</div>
 
         <div style={styles.actions}>
           <button
@@ -372,15 +384,27 @@ const styles = {
 },
 
   topBar: {
-    height: "56px",
-    background: "#020617",
-    color: "white",
-    borderBottom: "1px solid #1f2937",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 20px",
-  },
+  position: "sticky",
+  top: 0,
+  zIndex: 1000,
+
+  height: "64px",
+
+  background: "rgba(2, 6, 23, 0.82)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+
+  borderBottom: "1px solid rgba(148,163,184,.12)",
+
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+
+  padding: "0 24px",
+
+  boxShadow:
+    "0 6px 24px rgba(0,0,0,.25)",
+},
 
   main: {
   height: "calc(100vh - 56px)",
@@ -389,10 +413,10 @@ const styles = {
 },
 
   actions: {
-    display: "flex",
-    gap: "8px",
-    alignItems: "center",
-  },
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+},
 
   unsavedText: {
     color: "#86efac",
@@ -401,22 +425,39 @@ const styles = {
   },
 
   secondaryButton: {
-    background: "#1f2937",
-    color: "white",
-    border: "1px solid #374151",
-    padding: "9px 12px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-  },
+  background: "#111827",
+
+  color: "white",
+
+  border: "1px solid #374151",
+
+  padding: "10px 16px",
+
+  borderRadius: "10px",
+
+  cursor: "pointer",
+
+  fontWeight: 600,
+
+  transition: ".2s",
+},
 
   saveButton: {
-    background: "#16a34a",
-    color: "white",
-    border: "none",
-    padding: "9px 14px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-  },
+  background: "#22c55e",
+  color: "white",
+  border: "none",
+
+  padding: "10px 18px",
+
+  borderRadius: "10px",
+
+  fontWeight: 600,
+
+  cursor: "pointer",
+
+  transition: ".2s",
+
+  boxShadow:
+    "0 8px 20px rgba(34,197,94,.25)",
+},
 };
