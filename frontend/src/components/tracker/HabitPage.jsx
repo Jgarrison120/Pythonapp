@@ -1,47 +1,20 @@
-import { useState, useEffect } from "react";
 import HabitCalendar from "./HabitCalendar";
 
-function HabitPage({ habit, updateHabit, deleteHabit }) {
+function HabitPage({
+  habit,
+  updateHabit,
+  deleteHabit,
+  updateHabitEntry,
+}) {
   if (!habit) {
     return <div style={styles.empty}>No habit selected</div>;
   }
 
-  const STORAGE_KEY = `habit-tracker-${habit.id}`;
-
-  const [completionMap, setCompletionMap] = useState({});
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  useEffect(() => {
-  const savedDraft = localStorage.getItem(STORAGE_KEY);
-
-  fetch(`http://127.0.0.1:8000/habits`)
-    .then((res) => res.json())
-    .then((habits) => {
-      const currentHabit = habits.find((h) => h.id === habit.id);
-
-      const backendEntries = currentHabit?.entries || {};
-
-      setCompletionMap(
-        savedDraft ? JSON.parse(savedDraft) : backendEntries
-      );
-
-      setHasUnsavedChanges(Boolean(savedDraft));
-    })
-    .catch((err) => {
-      console.error(err);
-
-      if (savedDraft) {
-        setCompletionMap(JSON.parse(savedDraft));
-        setHasUnsavedChanges(true);
-      } else {
-        setCompletionMap({});
-        setHasUnsavedChanges(false);
-      }
-    });
-}, [STORAGE_KEY, habit.id]);
+  const completionMap = habit.entries || {};
 
   const formatDate = (date) => {
     const d = new Date(date);
+
     return new Date(d.getFullYear(), d.getMonth(), d.getDate())
       .toISOString()
       .split("T")[0];
@@ -49,37 +22,20 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
 
   const toggleDay = (date) => {
     const key = formatDate(date);
+    const current = completionMap[key] || 0;
 
-    setCompletionMap((prev) => {
-      const current = prev[key] || 0;
+    const next =
+      current === 0
+        ? 0.25
+        : current === 0.25
+        ? 0.5
+        : current === 0.5
+        ? 0.75
+        : current === 0.75
+        ? 1
+        : 0;
 
-      const next =
-        current === 0 ? 0.25 :
-        current === 0.25 ? 0.5 :
-        current === 0.5 ? 0.75 :
-        current === 0.75 ? 1 :
-        0;
-
-      const updated = { ...prev, [key]: next };
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setHasUnsavedChanges(true);
-
-      return updated;
-    });
-  };
-
-  const saveChanges = async () => {
-    for (const [date, value] of Object.entries(completionMap)) {
-      await fetch(`http://127.0.0.1:8000/habits/${habit.id}/entries/${date}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value }),
-      });
-    }
-
-    setHasUnsavedChanges(false);
-    alert("Changes saved to backend.");
+    updateHabitEntry(habit.id, key, next);
   };
 
   const calculateStreak = () => {
@@ -124,10 +80,12 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
     let current = 1;
 
     for (let i = 1; i < completedDates.length; i++) {
-      const prev = new Date(completedDates[i - 1]);
-      const curr = new Date(completedDates[i]);
+      const previous = new Date(completedDates[i - 1]);
+      const currentDay = new Date(completedDates[i]);
 
-      const diff = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+      const diff = Math.round(
+        (currentDay - previous) / (1000 * 60 * 60 * 24)
+      );
 
       if (diff === 1) {
         current++;
@@ -140,13 +98,11 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
     return best;
   };
 
-  const getCompletedDays = () => {
-    return Object.values(completionMap).filter((value) => value >= 0.75).length;
-  };
+  const getCompletedDays = () =>
+    Object.values(completionMap).filter((value) => value >= 0.75).length;
 
-  const getYearCompletionRate = () => {
-    return Math.round((getCompletedDays() / 365) * 100);
-  };
+  const getYearCompletionRate = () =>
+    Math.round((getCompletedDays() / 365) * 100);
 
   const getBestMonth = () => {
     const monthTotals = Array(12).fill(0);
@@ -162,7 +118,7 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
 
     const monthNames = [
       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
 
     return monthTotals[bestIndex] > 0
@@ -195,34 +151,23 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
           <h1 style={styles.title}>{habit.name}</h1>
           <p style={styles.subtitle}>{habit.goal}</p>
 
-          <div style={{ opacity: 0.7, marginTop: 5 }}>
+          <div style={styles.streakText}>
             🔥 Current Streak: {streak} days
           </div>
 
-          {hasUnsavedChanges && (
+          {habit.isDirty && (
             <div style={styles.unsavedText}>
-              Unsaved changes
+              Unsaved changes for this habit
             </div>
           )}
         </div>
 
         <div style={styles.toolbar}>
           <button
-            style={{
-              ...styles.toolbarButton,
-              background: hasUnsavedChanges ? "#16a34a" : "#1f2937",
-              opacity: hasUnsavedChanges ? 1 : 0.55,
-            }}
-            onClick={saveChanges}
-            disabled={!hasUnsavedChanges}
-          >
-            💾 Save Changes
-          </button>
-
-          <button
             style={styles.toolbarButton}
             onClick={() => {
               const name = prompt("New habit name?", habit.name);
+
               if (name && name.trim()) {
                 updateHabit(habit.id, { name: name.trim() });
               }
@@ -235,6 +180,7 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
             style={styles.toolbarButton}
             onClick={() => {
               const goal = prompt("New goal?", habit.goal);
+
               if (goal && goal.trim()) {
                 updateHabit(habit.id, { goal: goal.trim() });
               }
@@ -283,7 +229,7 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
         <div style={styles.card}>
           <h3>🏅 Badges</h3>
 
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div style={styles.badgeRow}>
             {badges.length > 0 ? (
               badges.map((badge, index) => (
                 <span key={index} style={styles.badge}>
@@ -349,6 +295,11 @@ const styles = {
     opacity: 0.7,
   },
 
+  streakText: {
+    opacity: 0.7,
+    marginTop: 5,
+  },
+
   unsavedText: {
     marginTop: "8px",
     color: "#86efac",
@@ -407,6 +358,12 @@ const styles = {
     background: "#1f2937",
     padding: "20px",
     borderRadius: "12px",
+  },
+
+  badgeRow: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
   },
 
   badge: {
