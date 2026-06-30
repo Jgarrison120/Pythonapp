@@ -9,11 +9,36 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
   const STORAGE_KEY = `habit-tracker-${habit.id}`;
 
   const [completionMap, setCompletionMap] = useState({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    setCompletionMap(saved ? JSON.parse(saved) : {});
-  }, [STORAGE_KEY]);
+  const savedDraft = localStorage.getItem(STORAGE_KEY);
+
+  fetch(`http://127.0.0.1:8000/habits`)
+    .then((res) => res.json())
+    .then((habits) => {
+      const currentHabit = habits.find((h) => h.id === habit.id);
+
+      const backendEntries = currentHabit?.entries || {};
+
+      setCompletionMap(
+        savedDraft ? JSON.parse(savedDraft) : backendEntries
+      );
+
+      setHasUnsavedChanges(Boolean(savedDraft));
+    })
+    .catch((err) => {
+      console.error(err);
+
+      if (savedDraft) {
+        setCompletionMap(JSON.parse(savedDraft));
+        setHasUnsavedChanges(true);
+      } else {
+        setCompletionMap({});
+        setHasUnsavedChanges(false);
+      }
+    });
+}, [STORAGE_KEY, habit.id]);
 
   const formatDate = (date) => {
     const d = new Date(date);
@@ -38,9 +63,23 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
       const updated = { ...prev, [key]: next };
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setHasUnsavedChanges(true);
 
       return updated;
     });
+  };
+
+  const saveChanges = async () => {
+    for (const [date, value] of Object.entries(completionMap)) {
+      await fetch(`http://127.0.0.1:8000/habits/${habit.id}/entries/${date}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+    }
+
+    setHasUnsavedChanges(false);
+    alert("Changes saved to backend.");
   };
 
   const calculateStreak = () => {
@@ -159,9 +198,27 @@ function HabitPage({ habit, updateHabit, deleteHabit }) {
           <div style={{ opacity: 0.7, marginTop: 5 }}>
             🔥 Current Streak: {streak} days
           </div>
+
+          {hasUnsavedChanges && (
+            <div style={styles.unsavedText}>
+              Unsaved changes
+            </div>
+          )}
         </div>
 
         <div style={styles.toolbar}>
+          <button
+            style={{
+              ...styles.toolbarButton,
+              background: hasUnsavedChanges ? "#16a34a" : "#1f2937",
+              opacity: hasUnsavedChanges ? 1 : 0.55,
+            }}
+            onClick={saveChanges}
+            disabled={!hasUnsavedChanges}
+          >
+            💾 Save Changes
+          </button>
+
           <button
             style={styles.toolbarButton}
             onClick={() => {
@@ -290,6 +347,12 @@ const styles = {
 
   subtitle: {
     opacity: 0.7,
+  },
+
+  unsavedText: {
+    marginTop: "8px",
+    color: "#86efac",
+    fontSize: "13px",
   },
 
   toolbar: {

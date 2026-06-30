@@ -5,37 +5,21 @@ import HabitPage from "./components/tracker/HabitPage";
 
 function App() {
 
-  const defaultHabits = [
-    {
-      id: 1,
-      name: "Exercise",
-      goal: "Run 3 miles every day",
-      streak: 0,
-      completion: 0,
-      badges: []
-    },
-    {
-      id: 2,
-      name: "Reading",
-      goal: "Read 30 minutes",
-      streak: 0,
-      completion: 0,
-      badges: []
-    }
-  ];
-
-  const [habits, setHabits] = useState(() => {
-    const saved = localStorage.getItem("habits-list");
-    return saved ? JSON.parse(saved) : defaultHabits;
-  });
+  const [habits, setHabits] = useState([]);
 
   const [selectedHabitId, setSelectedHabitId] = useState(1);
   useEffect(() => {
-  localStorage.setItem(
-    "habits-list",
-    JSON.stringify(habits)
-  );
-}, [habits]);
+  fetch("http://127.0.0.1:8000/habits")
+    .then((response) => response.json())
+    .then((data) => {
+      setHabits(data);
+
+      if (data.length > 0) {
+        setSelectedHabitId(data[0].id);
+      }
+    })
+    .catch(console.error);
+}, []);
 
   const selectedHabit =
     habits.find((h) => h.id === selectedHabitId) || habits[0];
@@ -91,12 +75,18 @@ const deleteHabit = (habitId) => {
         addHabit={addHabit}
       />
 
-      <HabitPage
-  key={selectedHabit.id}
-  habit={selectedHabit}
-  updateHabit={updateHabit}
-  deleteHabit={deleteHabit}
-/>
+      {selectedHabit ? (
+  <HabitPage
+    key={selectedHabit.id}
+    habit={selectedHabit}
+    updateHabit={updateHabit}
+    deleteHabit={deleteHabit}
+  />
+) : (
+  <div style={{ color: "white", padding: 20 }}>
+    Loading habits...
+  </div>
+)}
     </div>
   );
 }
