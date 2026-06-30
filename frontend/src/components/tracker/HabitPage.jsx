@@ -5,6 +5,7 @@ function HabitPage({
   updateHabit,
   deleteHabit,
   updateHabitEntry,
+  saveHabit,
 }) {
   if (!habit) {
     return <div style={styles.empty}>No habit selected</div>;
@@ -147,56 +148,55 @@ function HabitPage({
   return (
     <div style={styles.page}>
       <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>{habit.name}</h1>
-          <p style={styles.subtitle}>{habit.goal}</p>
+  <div style={styles.habitInfo}>
+    <label style={styles.label}>Habit Name</label>
+    <input
+      style={styles.input}
+      value={habit.name}
+      onChange={(e) =>
+        updateHabit(habit.id, { name: e.target.value })
+      }
+    />
 
-          <div style={styles.streakText}>
-            🔥 Current Streak: {streak} days
-          </div>
+    <label style={styles.label}>Goal</label>
+    <textarea
+      style={styles.textarea}
+      value={habit.goal}
+      onChange={(e) =>
+        updateHabit(habit.id, { goal: e.target.value })
+      }
+    />
 
-          {habit.isDirty && (
-            <div style={styles.unsavedText}>
-              Unsaved changes for this habit
-            </div>
-          )}
-        </div>
+    <div style={styles.streakText}>
+      🔥 Current Streak: {streak} days
+    </div>
 
-        <div style={styles.toolbar}>
-          <button
-            style={styles.toolbarButton}
-            onClick={() => {
-              const name = prompt("New habit name?", habit.name);
-
-              if (name && name.trim()) {
-                updateHabit(habit.id, { name: name.trim() });
-              }
-            }}
-          >
-            ✏️ Rename
-          </button>
-
-          <button
-            style={styles.toolbarButton}
-            onClick={() => {
-              const goal = prompt("New goal?", habit.goal);
-
-              if (goal && goal.trim()) {
-                updateHabit(habit.id, { goal: goal.trim() });
-              }
-            }}
-          >
-            🎯 Edit Goal
-          </button>
-
-          <button
-            style={styles.deleteButton}
-            onClick={() => deleteHabit(habit.id)}
-          >
-            🗑 Delete
-          </button>
-        </div>
+    {habit.isDirty && (
+      <div style={styles.unsavedText}>
+        Unsaved changes for this habit
       </div>
+    )}
+  </div>
+
+  <div style={styles.toolbar}>
+    <button
+      style={styles.deleteButton}
+      onClick={() => deleteHabit(habit.id)}
+    >
+      🗑 Delete
+    </button>
+    <button
+  style={{
+    ...styles.saveHabitButton,
+    opacity: habit.isDirty || habit.isNew ? 1 : 0.5,
+  }}
+  disabled={!habit.isDirty && !habit.isNew}
+  onClick={() => saveHabit(habit.id)}
+>
+  💾 Save Habit
+</button>
+  </div>
+</div>
 
       <div style={styles.analyticsGrid}>
         <div style={styles.analyticsCard}>
@@ -330,6 +330,15 @@ const styles = {
     cursor: "pointer",
   },
 
+  saveHabitButton: {
+  background: "#16a34a",
+  color: "white",
+  border: "none",
+  padding: "9px 12px",
+  borderRadius: "8px",
+  cursor: "pointer",
+},
+
   analyticsGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(5, 1fr)",
@@ -379,4 +388,42 @@ const styles = {
     borderRadius: "12px",
     marginTop: "20px",
   },
+
+  habitInfo: {
+  flex: 1,
+  maxWidth: "700px",
+},
+
+label: {
+  display: "block",
+  fontSize: "12px",
+  opacity: 0.65,
+  marginBottom: "6px",
+  marginTop: "10px",
+},
+
+input: {
+  width: "100%",
+  background: "#111827",
+  color: "white",
+  border: "1px solid #374151",
+  borderRadius: "10px",
+  padding: "12px",
+  fontSize: "28px",
+  fontWeight: "700",
+  outline: "none",
+},
+
+textarea: {
+  width: "100%",
+  minHeight: "70px",
+  background: "#111827",
+  color: "white",
+  border: "1px solid #374151",
+  borderRadius: "10px",
+  padding: "12px",
+  fontSize: "15px",
+  resize: "vertical",
+  outline: "none",
+},
 };
