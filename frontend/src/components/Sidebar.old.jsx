@@ -2,7 +2,7 @@ function Sidebar({
   habits,
   selectedHabitId,
   setSelectedHabitId,
-  addHabit,
+  openSettings,
 }) {
   const totalHabits = habits.length;
 
@@ -62,10 +62,7 @@ function Sidebar({
         </div>
       </div>
 
-      <button style={styles.addButton} onClick={addHabit}>
-        + New Habit
-      </button>
-
+    
       <div style={styles.sectionLabel}>Habits</div>
 
       <div style={styles.list}>
@@ -120,7 +117,9 @@ function Sidebar({
         })}
       </div>
 
-      <div style={styles.footer}>⚙️ Settings</div>
+      <button style={styles.settingsButton} onClick={openSettings}>
+  ⚙️ Settings
+</button>
     </div>
   );
 }
@@ -185,17 +184,6 @@ const styles = {
     height: "100%",
     background: "#2563eb",
     borderRadius: "999px",
-  },
-
-  addButton: {
-    background: "#2563eb",
-    border: "none",
-    color: "white",
-    padding: "11px",
-    borderRadius: "10px",
-    cursor: "pointer",
-    marginBottom: "18px",
-    fontWeight: "700",
   },
 
   sectionLabel: {
@@ -299,4 +287,16 @@ const styles = {
     fontSize: "12px",
     paddingTop: "20px",
   },
+
+  settingsButton: {
+  marginTop: "auto",
+  background: "#020617",
+  color: "#cbd5e1",
+  border: "1px solid #1f2937",
+  padding: "10px",
+  borderRadius: "10px",
+  cursor: "pointer",
+  fontWeight: "600",
+},
+
 };
