@@ -392,11 +392,14 @@ function App() {
     <div style={styles.shell}>
       <div style={styles.topBar}>
         <div>
-          <div style={styles.appTitle}>
+          <h1
+  data-testid="habit-tracker-title"
+  style={styles.appTitle}
+>
   {currentUser?.username
     ? `${currentUser.username}'s Habit Tracker`
     : "Habit Tracker"}
-</div>
+</h1>
           <div style={styles.statusText}>
             {hasUnsavedChanges
               ? "Draft changes waiting to be saved"
