@@ -6,6 +6,9 @@ info:
 http:
   method: POST
   url: http://localhost:8000/habits
+  body:
+    type: json
+    data: '{"journal_id":1,"name":"bruno","goal":"testing bruno"}'
   auth: inherit
 
 settings:
