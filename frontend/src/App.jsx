@@ -3,6 +3,8 @@ import { useState } from "react";
 import AuthPage from "./components/AuthPage";
 import Sidebar from "./components/sidebar/Sidebar";
 import HabitPage from "./components/tracker/HabitPage";
+import CreateHabitModal from "./components/tracker/CreateHabitModal";
+import CreateJournalModal from "./components/CreateJournalModal";
 import AccountSettingsModal from "./components/settings/AccountSettingsModal";
 
 const API = "http://127.0.0.1:8000";
@@ -25,6 +27,8 @@ function App() {
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCreateHabit, setShowCreateHabit] = useState(false);
+  const [showCreateJournal, setShowCreateJournal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -93,25 +97,24 @@ function App() {
     }
   };
 
-  const addJournal = async () => {
-    const name = window.prompt("What would you like to name your journal?");
-    if (!name?.trim() || !currentUser) return;
+  const addJournal = () => setShowCreateJournal(true);
+
+  const createJournal = async (name) => {
+    if (!currentUser) return;
     if (hasUnsavedChanges && !window.confirm("You have unsaved changes. Create a new journal anyway?")) return;
-    try {
-      const newJournal = await request("/journals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: currentUser.id, name: name.trim() }),
-      });
-      setJournals((previous) => [...previous, newJournal]);
-      setSelectedJournalId(newJournal.id);
-      setHabits([]);
-      setSelectedHabitId(null);
-      resetDraftState();
-      setNotice("Your new journal is ready.");
-    } catch (error) {
-      setNotice(error.message);
-    }
+
+    const newJournal = await request("/journals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: currentUser.id, name: name.trim() }),
+    });
+    setJournals((previous) => [...previous, newJournal]);
+    setSelectedJournalId(newJournal.id);
+    setHabits([]);
+    setSelectedHabitId(null);
+    resetDraftState();
+    setNotice("Your new journal is ready.");
+    setShowCreateJournal(false);
   };
 
   const deleteJournal = async () => {
@@ -135,15 +138,16 @@ function App() {
   };
 
   const addHabit = () => {
-    const name = window.prompt("What habit would you like to build?");
-    if (!name?.trim()) return;
-    const goal = window.prompt("What is your goal for this habit?");
+    setShowCreateHabit(true);
+  };
+
+  const createHabit = ({ name, goal }) => {
     pushHistory();
     const newHabit = {
       id: "temp-" + Date.now(),
       journal_id: selectedJournalId,
       name: name.trim(),
-      goal: goal?.trim() || "No goal set",
+      goal: goal.trim(),
       entries: {},
       isNew: true,
       isDirty: true,
@@ -152,6 +156,7 @@ function App() {
     setSelectedHabitId(newHabit.id);
     setHasUnsavedChanges(true);
     setNotice("");
+    setShowCreateHabit(false);
   };
 
   const updateHabit = (habitId, updates) => {
@@ -265,6 +270,8 @@ function App() {
     setHabits([]);
     setSelectedHabitId(null);
     setShowSettings(false);
+    setShowCreateHabit(false);
+    setShowCreateJournal(false);
     setNotice("");
     resetDraftState();
   };
@@ -384,6 +391,18 @@ function App() {
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
           close={() => setShowSettings(false)}
+        />
+      )}
+      {showCreateHabit && (
+        <CreateHabitModal
+          onCreate={createHabit}
+          close={() => setShowCreateHabit(false)}
+        />
+      )}
+      {showCreateJournal && (
+        <CreateJournalModal
+          onCreate={createJournal}
+          close={() => setShowCreateJournal(false)}
         />
       )}
     </div>
