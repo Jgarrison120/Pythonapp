@@ -36,6 +36,29 @@ describe("hamster wheel UI", function () {
     await driver.executeScript("document.documentElement.style.scrollBehavior = 'auto'");
 
     const dailyTracker = await driver.findElement(By.css("[data-testid='daily-tracker']"));
+    const todayLabel = await driver.executeScript('return new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date())');
+    assert.equal(await dailyTracker.findElement(By.css(".daily-tracker-date")).getText(), `Today · ${todayLabel}`);
+    const selectedCard = await driver.findElement(By.css(".habit-item.is-selected"));
+    assert.equal(await dailyTracker.findElement(By.css(".daily-tracker-habit")).getText(), await selectedCard.findElement(By.css(".habit-item-name")).getText());
+    const originalGoal = await dailyTracker.findElement(By.css(".daily-tracker-goal-text")).getText();
+    assert.equal((await driver.findElements(By.css(".detail-header"))).length, 0);
+    await selectedCard.findElement(By.css(".habit-item-action[aria-label^='Edit']")).click();
+    assert.equal(await driver.findElement(By.css("#edit-habit-name")).getAttribute("value"), await dailyTracker.findElement(By.css(".daily-tracker-habit")).getText());
+    assert.equal(await driver.findElement(By.css("#edit-habit-goal")).getAttribute("value"), originalGoal);
+    await driver.findElement(By.css("#edit-habit-goal")).sendKeys(" today");
+    await driver.findElement(By.css(".edit-habit-modal button[type='submit']")).click();
+    assert.equal(await dailyTracker.findElement(By.css(".daily-tracker-goal-text")).getText(), `${originalGoal} today`);
+    assert.equal(await selectedCard.findElement(By.css(".habit-item-save")).isEnabled(), true);
+    await driver.findElement(By.xpath("//button[normalize-space()='Undo']")).click();
+    assert.equal(await dailyTracker.findElement(By.css(".daily-tracker-goal-text")).getText(), originalGoal);
+    assert.equal(await selectedCard.findElement(By.css(".habit-item-save")).isEnabled(), false);
+    const cardCount = (await driver.findElements(By.css(".habit-item"))).length;
+    const selectedName = await selectedCard.findElement(By.css(".habit-item-name")).getText();
+    await selectedCard.findElement(By.css(".habit-item-delete")).click();
+    const deletePrompt = await driver.switchTo().alert();
+    assert.ok((await deletePrompt.getText()).includes(selectedName));
+    await deletePrompt.dismiss();
+    assert.equal((await driver.findElements(By.css(".habit-item"))).length, cardCount);
     const initialProgress = await dailyTracker.findElement(By.css(".hamster-milestone.is-selected strong")).getText();
     const targetProgress = initialProgress === "100%" ? "75%" : "100%";
     await dailyTracker.findElement(By.xpath(`.//button[contains(@class,'hamster-milestone')][strong[normalize-space()='${targetProgress}']]`)).click();
@@ -61,8 +84,10 @@ describe("hamster wheel UI", function () {
 
     await dailyTracker.findElement(By.css("[aria-label='Previous week']")).click();
     await driver.wait(async () => (await dailyTracker.findElements(By.css(".daily-today-button"))).length === 1, 3000);
+    assert.notEqual(await dailyTracker.findElement(By.css(".daily-tracker-date")).getText(), `Today · ${todayLabel}`);
     await dailyTracker.findElement(By.css(".daily-today-button")).click();
     await driver.wait(async () => (await dailyTracker.findElements(By.css(".daily-today-button"))).length === 0, 3000);
+    assert.equal(await dailyTracker.findElement(By.css(".daily-tracker-date")).getText(), `Today · ${todayLabel}`);
 
     const displayedYear = Number(await driver.findElement(By.css(".calendar-year")).getText());
     await driver.findElement(By.css("[aria-label='Previous year']")).click();
@@ -100,6 +125,9 @@ describe("hamster wheel UI", function () {
     await driver.findElement(By.css(".create-modal button[type='submit']")).click();
     assert.equal((await driver.findElements(By.css(".create-modal"))).length, 0);
     assert.equal((await driver.findElements(By.css(".habit-item"))).length, habitCount + 1);
+    assert.equal(await driver.findElement(By.css(".daily-tracker-habit")).getText(), "Stretch");
+    assert.equal(await driver.findElement(By.css(".daily-tracker-goal-text")).getText(), "Move for ten minutes");
+    assert.equal(await driver.findElement(By.css(".habit-item.is-selected .habit-item-save")).isEnabled(), true);
     await driver.findElement(By.xpath("//button[normalize-space()='Undo']")).click();
     assert.equal((await driver.findElements(By.css(".habit-item"))).length, habitCount);
 

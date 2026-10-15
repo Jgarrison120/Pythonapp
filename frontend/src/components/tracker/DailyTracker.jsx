@@ -51,37 +51,63 @@ function DailyTracker({ habit, completionMap, updateHabitEntry }) {
   const monday = dayAt(selectedDate, -((selectedDate.getDay() + 6) % 7));
   const week = Array.from({ length: 7 }, (_, index) => dayAt(monday, index));
   const selectedLabel = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(selectedDate);
-  const encouragement = progress === 1
-    ? "You showed up for yourself. That counts."
-    : progress >= 0.75
-      ? "So close. Keep your momentum going."
-      : progress > 0
-        ? "A small step is still a step forward."
-        : selectedKey === todayKey
-          ? "Start wherever you are today."
-          : "Every day is a fresh chance to begin.";
-
   return (
     <section className="daily-tracker" aria-label="Daily habit tracker" data-testid="daily-tracker">
       <div className="daily-tracker-main">
-        <div className="daily-tracker-copy">
-          <span className="daily-tracker-kicker">Daily check-in · {habit.name}</span>
-          <h2>{selectedKey === todayKey ? "How’s today going?" : "How did it go?"}</h2>
-          <p>{encouragement}</p>
-          <span className="daily-tracker-date">{selectedLabel}</span>
-        </div>
-        <div className="daily-progress" role="img" aria-label={`${percent}% complete for ${selectedLabel}`} style={{ "--daily-progress": `${percent}%` }}>
-          <div className="daily-progress-inner">
-            <strong>{percent}%</strong>
-            <span>of your goal</span>
+        <div className="daily-tracker-overview">
+          <div className="daily-tracker-copy">
+            <div className="daily-tracker-meta">
+              <span className="daily-tracker-kicker">Daily check-in</span>
+              <span className="daily-tracker-date">{selectedKey === todayKey ? "Today · " : ""}{selectedLabel}</span>
+            </div>
+            <h2 className="daily-tracker-habit">{habit.name}</h2>
+            <div className="daily-tracker-goal">
+              <span>{selectedKey === todayKey ? "Your goal today" : "Your habit goal"}</span>
+              <p className="daily-tracker-goal-text">{habit.goal}</p>
+            </div>
+          </div>
+          <div className="daily-progress" role="img" aria-label={`${percent}% complete for ${selectedLabel}`} style={{ "--daily-progress": `${percent}%` }}>
+            <div className="daily-progress-inner">
+              <strong>{percent}%</strong>
+              <span>of your goal</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="daily-tracker-controls">
-        <div>
-          <h3>Mark your progress</h3>
-          <p>Choose a milestone. Your hamster will meet you there.</p>
+        <div className="daily-week">
+          <div className="daily-week-heading">
+            <div>
+              <h3>Your week</h3>
+            </div>
+            <div className="daily-week-actions">
+              {selectedKey !== todayKey && <button type="button" className="daily-today-button" onClick={() => setSelectedDate(today)}>Today</button>}
+              <button type="button" className="daily-week-nav" aria-label="Previous week" onClick={() => setSelectedDate(dayAt(selectedDate, -7))}>‹</button>
+              <button type="button" className="daily-week-nav" aria-label="Next week" onClick={() => setSelectedDate(dayAt(selectedDate, 7))}>›</button>
+            </div>
+          </div>
+          <div className="daily-week-days" role="group" aria-label="Days of the selected week">
+            {week.map((day) => {
+              const key = dateKey(day);
+              const value = completionMap[key] || 0;
+              const dayLabel = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(day);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`daily-week-day${key === selectedKey ? " is-selected" : ""}${key === todayKey ? " is-today" : ""}`}
+                  aria-label={`${dayLabel}: ${Math.round(value * 100)}% complete`}
+                  aria-pressed={key === selectedKey}
+                  onClick={() => setSelectedDate(day)}
+                >
+                  <span className="daily-week-name">{new Intl.DateTimeFormat("en", { weekday: "short" }).format(day)}</span>
+                  <strong>{day.getDate()}</strong>
+                  <span className="daily-week-indicator" style={{ "--day-progress": `${Math.round(value * 100)}%` }} aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="hamster-progress">
           <div className="hamster-progress-stage" ref={stageRef}>
@@ -110,41 +136,6 @@ function DailyTracker({ habit, completionMap, updateHabitEntry }) {
               </button>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="daily-week">
-        <div className="daily-week-heading">
-          <div>
-            <h3>Your week</h3>
-            <p>Pick a day to review or update.</p>
-          </div>
-          <div className="daily-week-actions">
-            {selectedKey !== todayKey && <button type="button" className="daily-today-button" onClick={() => setSelectedDate(today)}>Today</button>}
-            <button type="button" className="daily-week-nav" aria-label="Previous week" onClick={() => setSelectedDate(dayAt(selectedDate, -7))}>‹</button>
-            <button type="button" className="daily-week-nav" aria-label="Next week" onClick={() => setSelectedDate(dayAt(selectedDate, 7))}>›</button>
-          </div>
-        </div>
-        <div className="daily-week-days" role="group" aria-label="Days of the selected week">
-          {week.map((day) => {
-            const key = dateKey(day);
-            const value = completionMap[key] || 0;
-            const dayLabel = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(day);
-            return (
-              <button
-                key={key}
-                type="button"
-                className={`daily-week-day${key === selectedKey ? " is-selected" : ""}${key === todayKey ? " is-today" : ""}`}
-                aria-label={`${dayLabel}: ${Math.round(value * 100)}% complete`}
-                aria-pressed={key === selectedKey}
-                onClick={() => setSelectedDate(day)}
-              >
-                <span className="daily-week-name">{new Intl.DateTimeFormat("en", { weekday: "short" }).format(day)}</span>
-                <strong>{day.getDate()}</strong>
-                <span className="daily-week-indicator" style={{ "--day-progress": `${Math.round(value * 100)}%` }} aria-hidden="true" />
-              </button>
-            );
-          })}
         </div>
       </div>
     </section>

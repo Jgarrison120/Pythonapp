@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-function CreateHabitModal({ onCreate, close }) {
-  const [name, setName] = useState("");
-  const [goal, setGoal] = useState("");
+function CreateHabitModal({ habit, onSubmit, close }) {
+  const isEditing = Boolean(habit);
+  const nameId = isEditing ? "edit-habit-name" : "new-habit-name";
+  const goalId = isEditing ? "edit-habit-goal" : "new-habit-goal";
+  const [name, setName] = useState(habit?.name ?? "");
+  const [goal, setGoal] = useState(habit?.goal ?? "");
   const [errors, setErrors] = useState({});
   const nameRef = useRef(null);
   const dialogRef = useRef(null);
@@ -39,37 +42,37 @@ function CreateHabitModal({ onCreate, close }) {
     if (!goal.trim()) nextErrors.goal = "Please add a goal for your habit.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
-    onCreate({ name: name.trim(), goal: goal.trim() });
+    onSubmit({ name: name.trim(), goal: goal.trim() });
   };
 
   return (
     <div className="modal-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
       <div
         ref={dialogRef}
-        className="create-modal"
+        className={"create-modal" + (isEditing ? " edit-habit-modal" : "")}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="create-habit-title"
-        aria-describedby="create-habit-description"
+        aria-labelledby="habit-modal-title"
+        aria-describedby="habit-modal-description"
         onKeyDown={handleKeyDown}
       >
         <div className="modal-header">
           <div>
-            <span className="eyebrow">A fresh start</span>
-            <h2 id="create-habit-title">Create a new habit</h2>
+            <span className="eyebrow">{isEditing ? "Your habit" : "A fresh start"}</span>
+            <h2 id="habit-modal-title">{isEditing ? "Edit habit" : "Create a new habit"}</h2>
           </div>
-          <button type="button" className="close-button" aria-label="Close new habit" onClick={close}>×</button>
+          <button type="button" className="close-button" aria-label={isEditing ? "Close edit habit" : "Close new habit"} onClick={close}>×</button>
         </div>
-        <p id="create-habit-description" className="create-modal-intro">
-          Give your habit a name and a goal. You can edit both later.
+        <p id="habit-modal-description" className="create-modal-intro">
+          {isEditing ? "Update your name or goal, then save the habit from its card." : "Give your habit a name and a goal. You can edit both later."}
         </p>
         <form onSubmit={submit} noValidate>
-          <label className="form-label create-field-label" htmlFor="new-habit-name">
+          <label className="form-label create-field-label" htmlFor={nameId}>
             Name <span>Required</span>
           </label>
           <input
             ref={nameRef}
-            id="new-habit-name"
+            id={nameId}
             className="form-input"
             value={name}
             onChange={(event) => {
@@ -79,15 +82,15 @@ function CreateHabitModal({ onCreate, close }) {
             placeholder="e.g. Read before bed"
             required
             aria-invalid={Boolean(errors.name)}
-            aria-describedby={errors.name ? "new-habit-name-error" : undefined}
+            aria-describedby={errors.name ? `${nameId}-error` : undefined}
           />
-          {errors.name && <p id="new-habit-name-error" className="create-field-error" role="alert">{errors.name}</p>}
+          {errors.name && <p id={`${nameId}-error`} className="create-field-error" role="alert">{errors.name}</p>}
 
-          <label className="form-label create-field-label" htmlFor="new-habit-goal">
+          <label className="form-label create-field-label" htmlFor={goalId}>
             Goals <span>Required</span>
           </label>
           <textarea
-            id="new-habit-goal"
+            id={goalId}
             className="form-input create-goal-input"
             value={goal}
             onChange={(event) => {
@@ -97,13 +100,13 @@ function CreateHabitModal({ onCreate, close }) {
             placeholder="e.g. Read for 20 minutes each evening"
             required
             aria-invalid={Boolean(errors.goal)}
-            aria-describedby={errors.goal ? "new-habit-goal-error" : undefined}
+            aria-describedby={errors.goal ? `${goalId}-error` : undefined}
           />
-          {errors.goal && <p id="new-habit-goal-error" className="create-field-error" role="alert">{errors.goal}</p>}
+          {errors.goal && <p id={`${goalId}-error`} className="create-field-error" role="alert">{errors.goal}</p>}
 
           <div className="create-modal-actions">
             <button type="button" className="button button-secondary" onClick={close}>Cancel</button>
-            <button type="submit" className="button button-primary">Create habit</button>
+            <button type="submit" className="button button-primary">{isEditing ? "Apply changes" : "Create habit"}</button>
           </div>
         </form>
       </div>

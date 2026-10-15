@@ -1,6 +1,6 @@
 import SidebarHabitItem from "./SidebarHabitItem";
 
-function SidebarHabitList({ habits, selectedHabitId, setSelectedHabitId }) {
+function SidebarHabitList({ habits, selectedHabitId, setSelectedHabitId, editHabit, saveHabit, deleteHabit, saving }) {
   return (
     <nav className="habit-list" aria-label="Habits">
       {habits.length === 0 ? (
@@ -12,6 +12,10 @@ function SidebarHabitList({ habits, selectedHabitId, setSelectedHabitId }) {
             habit={habit}
             isSelected={habit.id === selectedHabitId}
             onSelect={() => setSelectedHabitId(habit.id)}
+            onEdit={() => editHabit(habit.id)}
+            onSave={() => saveHabit(habit.id)}
+            onDelete={() => deleteHabit(habit.id)}
+            saving={saving}
           />
         ))
       )}

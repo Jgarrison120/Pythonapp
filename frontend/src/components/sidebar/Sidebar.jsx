@@ -2,7 +2,7 @@ import SidebarStats from "./SidebarStats";
 import SidebarHabitList from "./SidebarHabitList";
 import SidebarFooter from "./SidebarFooter";
 
-function Sidebar({ habits, selectedHabitId, setSelectedHabitId, openSettings, addHabit }) {
+function Sidebar({ habits, selectedHabitId, setSelectedHabitId, openSettings, addHabit, editHabit, saveHabit, deleteHabit, saving }) {
   return (
     <aside className="habit-sidebar" aria-label="Your habits">
       <div className="sidebar-heading">
@@ -21,6 +21,10 @@ function Sidebar({ habits, selectedHabitId, setSelectedHabitId, openSettings, ad
         habits={habits}
         selectedHabitId={selectedHabitId}
         setSelectedHabitId={setSelectedHabitId}
+        editHabit={editHabit}
+        saveHabit={saveHabit}
+        deleteHabit={deleteHabit}
+        saving={saving}
       />
       <SidebarStats habits={habits} />
       <SidebarFooter openSettings={openSettings} />

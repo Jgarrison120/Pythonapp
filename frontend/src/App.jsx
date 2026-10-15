@@ -28,11 +28,13 @@ function App() {
   const [redoStack, setRedoStack] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateHabit, setShowCreateHabit] = useState(false);
+  const [editingHabitId, setEditingHabitId] = useState(null);
   const [showCreateJournal, setShowCreateJournal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
 
   const selectedHabit = habits.find((habit) => habit.id === selectedHabitId) || habits[0];
+  const editingHabit = habits.find((habit) => habit.id === editingHabitId);
   const selectedJournal = journals.find((journal) => journal.id === selectedJournalId);
 
   const snapshot = () => ({ habits, selectedHabitId, deletedHabitIds, hasUnsavedChanges });
@@ -167,6 +169,14 @@ function App() {
     setHasUnsavedChanges(true);
   };
 
+  const applyHabitEdits = ({ name, goal }) => {
+    if (!editingHabit) return;
+    if (name !== editingHabit.name || goal !== editingHabit.goal) {
+      updateHabit(editingHabit.id, { name, goal });
+    }
+    setEditingHabitId(null);
+  };
+
   const updateHabitEntry = (habitId, date, value) => {
     pushHistory();
     setHabits((previous) => previous.map((habit) =>
@@ -187,13 +197,13 @@ function App() {
       setNotice("Keep at least one habit in this journal.");
       return;
     }
-    if (!window.confirm("Delete this habit?")) return;
-    pushHistory();
     const habit = habits.find((item) => item.id === habitId);
+    if (!window.confirm(`Delete "${habit?.name || "this habit"}"?`)) return;
+    pushHistory();
     if (habit && !habit.isNew) setDeletedHabitIds((previous) => [...previous, habitId]);
     const remaining = habits.filter((item) => item.id !== habitId);
     setHabits(remaining);
-    setSelectedHabitId(remaining[0]?.id ?? null);
+    setSelectedHabitId((current) => current === habitId ? remaining[0]?.id ?? null : current);
     setHasUnsavedChanges(true);
     setNotice("");
   };
@@ -230,7 +240,7 @@ function App() {
     try {
       const savedHabit = await persistHabit(habit);
       setHabits((previous) => previous.map((item) => item.id === habitId ? savedHabit : item));
-      setSelectedHabitId(savedHabit.id);
+      setSelectedHabitId((current) => current === habitId ? savedHabit.id : current);
       setHasUnsavedChanges(
         deletedHabitIds.length > 0 || habits.some((item) => item.id !== habitId && (item.isDirty || item.isNew))
       );
@@ -271,6 +281,7 @@ function App() {
     setSelectedHabitId(null);
     setShowSettings(false);
     setShowCreateHabit(false);
+    setEditingHabitId(null);
     setShowCreateJournal(false);
     setNotice("");
     resetDraftState();
@@ -377,16 +388,16 @@ function App() {
             setSelectedHabitId={setSelectedHabitId}
             openSettings={() => setShowSettings(true)}
             addHabit={addHabit}
+            editHabit={setEditingHabitId}
+            saveHabit={saveHabit}
+            deleteHabit={deleteHabit}
+            saving={isSaving}
           />
           {selectedHabit ? (
             <HabitPage
               key={selectedHabit.id}
               habit={selectedHabit}
-              updateHabit={updateHabit}
-              deleteHabit={deleteHabit}
               updateHabitEntry={updateHabitEntry}
-              saveHabit={saveHabit}
-              saving={isSaving}
             />
           ) : (
             <section className="empty-detail">
@@ -408,8 +419,16 @@ function App() {
       )}
       {showCreateHabit && (
         <CreateHabitModal
-          onCreate={createHabit}
+          onSubmit={createHabit}
           close={() => setShowCreateHabit(false)}
+        />
+      )}
+      {editingHabit && (
+        <CreateHabitModal
+          key={editingHabit.id}
+          habit={editingHabit}
+          onSubmit={applyHabitEdits}
+          close={() => setEditingHabitId(null)}
         />
       )}
       {showCreateJournal && (
