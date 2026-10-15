@@ -56,10 +56,41 @@ describe("Habit Journal UI", function () {
     await driver.findElement(By.css(".close-button")).click();
 
     const habitCount = (await driver.findElements(By.css(".habit-item"))).length;
-    await driver.executeScript("window.prompt = (() => { const answers = ['Stretch', 'Move for ten minutes']; return () => answers.shift(); })()");
     await driver.findElement(By.xpath("//button[normalize-space()='+ Add a habit']")).click();
+    assert.equal((await driver.findElements(By.css(".create-modal"))).length, 1);
+    assert.equal(await driver.findElement(By.css("#new-habit-name")).getAttribute("required"), "true");
+    assert.equal(await driver.findElement(By.css("#new-habit-goal")).getAttribute("required"), "true");
+    await driver.findElement(By.css(".create-modal button[type='submit']")).click();
+    assert.equal((await driver.findElements(By.css(".create-field-error"))).length, 2);
+    assert.equal((await driver.findElements(By.css(".habit-item"))).length, habitCount);
+    await driver.findElement(By.css("#new-habit-name")).sendKeys("Stretch");
+    await driver.findElement(By.css("#new-habit-goal")).sendKeys("Move for ten minutes");
+    await driver.findElement(By.css(".create-modal button[type='submit']")).click();
+    assert.equal((await driver.findElements(By.css(".create-modal"))).length, 0);
     assert.equal((await driver.findElements(By.css(".habit-item"))).length, habitCount + 1);
     await driver.findElement(By.xpath("//button[normalize-space()='Undo']")).click();
     assert.equal((await driver.findElements(By.css(".habit-item"))).length, habitCount);
+
+    await driver.findElement(By.xpath("//button[normalize-space()='+ Add a habit']")).click();
+    await driver.findElement(By.xpath("//button[normalize-space()='Cancel']")).click();
+    assert.equal((await driver.findElements(By.css(".create-modal"))).length, 0);
+
+    await driver.findElement(By.xpath("//button[normalize-space()='+ New journal']")).click();
+    assert.equal((await driver.findElements(By.css(".create-journal-modal"))).length, 1);
+    assert.equal(await driver.findElement(By.css("#new-journal-name")).getAttribute("required"), "true");
+    await driver.findElement(By.css(".create-journal-modal button[type='submit']")).click();
+    assert.match(await driver.findElement(By.css("#new-journal-name-error")).getText(), /Please add a name/);
+    await driver.findElement(By.xpath("//button[normalize-space()='Cancel']")).click();
+    assert.equal((await driver.findElements(By.css(".create-journal-modal"))).length, 0);
+
+    await driver.executeScript(
+      "const originalFetch = window.fetch; window.fetch = (url, options) => { if (String(url).endsWith('/journals') && options?.method === 'POST') { const body = JSON.parse(options.body); window.__createdJournalPayload = body; return Promise.resolve({ ok: true, json: async () => ({ id: 999999, ...body }) }); } return originalFetch(url, options); };"
+    );
+    await driver.findElement(By.xpath("//button[normalize-space()='+ New journal']")).click();
+    await driver.findElement(By.css("#new-journal-name")).sendKeys("  Weekend reset  ");
+    await driver.findElement(By.css(".create-journal-modal button[type='submit']")).click();
+    await driver.wait(async () => (await driver.findElements(By.css(".create-journal-modal"))).length === 0, 3000);
+    assert.equal(await driver.executeScript("return window.__createdJournalPayload.name"), "Weekend reset");
+    assert.equal(await driver.findElement(By.css("#journal-select")).getAttribute("value"), "999999");
   });
 });
