@@ -7,65 +7,53 @@ import AccountSettingsModal from "./components/settings/AccountSettingsModal";
 
 const API = "http://127.0.0.1:8000";
 
+async function request(path, options) {
+  const response = await fetch(API + path, options);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "That did not work. Please try again.");
+  return data;
+}
+
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [journals, setJournals] = useState([]);
   const [selectedJournalId, setSelectedJournalId] = useState(null);
-
   const [habits, setHabits] = useState([]);
   const [selectedHabitId, setSelectedHabitId] = useState(null);
   const [deletedHabitIds, setDeletedHabitIds] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-
   const [showSettings, setShowSettings] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [notice, setNotice] = useState("");
 
-  const selectedHabit =
-    habits.find((h) => h.id === selectedHabitId) || habits[0];
+  const selectedHabit = habits.find((habit) => habit.id === selectedHabitId) || habits[0];
+  const selectedJournal = journals.find((journal) => journal.id === selectedJournalId);
 
-  const createSnapshot = () => ({
-    habits,
-    selectedHabitId,
-    deletedHabitIds,
-    hasUnsavedChanges,
-  });
-
-  const restoreSnapshot = (snapshot) => {
-    setHabits(snapshot.habits);
-    setSelectedHabitId(snapshot.selectedHabitId);
-    setDeletedHabitIds(snapshot.deletedHabitIds);
-    setHasUnsavedChanges(snapshot.hasUnsavedChanges);
+  const snapshot = () => ({ habits, selectedHabitId, deletedHabitIds, hasUnsavedChanges });
+  const restoreSnapshot = (state) => {
+    setHabits(state.habits);
+    setSelectedHabitId(state.selectedHabitId);
+    setDeletedHabitIds(state.deletedHabitIds);
+    setHasUnsavedChanges(state.hasUnsavedChanges);
   };
-
   const pushHistory = () => {
-    setUndoStack((prev) => [...prev, createSnapshot()]);
+    setUndoStack((previous) => [...previous, snapshot()]);
     setRedoStack([]);
   };
-
   const undo = () => {
-    if (undoStack.length === 0) return;
-
-    const previous = undoStack[undoStack.length - 1];
-
-    setRedoStack((prev) => [...prev, createSnapshot()]);
-    setUndoStack((prev) => prev.slice(0, -1));
-
-    restoreSnapshot(previous);
+    if (!undoStack.length) return;
+    setRedoStack((previous) => [...previous, snapshot()]);
+    restoreSnapshot(undoStack[undoStack.length - 1]);
+    setUndoStack((previous) => previous.slice(0, -1));
   };
-
   const redo = () => {
-    if (redoStack.length === 0) return;
-
-    const next = redoStack[redoStack.length - 1];
-
-    setUndoStack((prev) => [...prev, createSnapshot()]);
-    setRedoStack((prev) => prev.slice(0, -1));
-
-    restoreSnapshot(next);
+    if (!redoStack.length) return;
+    setUndoStack((previous) => [...previous, snapshot()]);
+    restoreSnapshot(redoStack[redoStack.length - 1]);
+    setRedoStack((previous) => previous.slice(0, -1));
   };
-
   const resetDraftState = () => {
     setDeletedHabitIds([]);
     setHasUnsavedChanges(false);
@@ -73,305 +61,201 @@ function App() {
     setRedoStack([]);
   };
 
-  const handleLogin = async (user) => {
-    setCurrentUser(user);
-
-    const res = await fetch(`${API}/users/${user.id}/journals`);
-    const data = await res.json();
-
-    setJournals(data);
-
-    if (data.length > 0) {
-      setSelectedJournalId(data[0].id);
-      await loadHabits(data[0].id);
-    }
-  };
-
-  const loadHabits = async (journalId = selectedJournalId) => {
-    if (!journalId) return;
-
-    const res = await fetch(`${API}/journals/${journalId}/habits`);
-    const data = await res.json();
-
+  const loadHabits = async (journalId) => {
+    const data = await request("/journals/" + journalId + "/habits");
     setHabits(data);
     setSelectedHabitId(data[0]?.id ?? null);
     resetDraftState();
   };
 
-  const switchJournal = async (journalId) => {
-    if (hasUnsavedChanges) {
-      const confirmSwitch = window.confirm(
-        "You have unsaved changes. Switch journals anyway?"
-      );
-
-      if (!confirmSwitch) return;
-    }
-
-    setSelectedJournalId(Number(journalId));
-    await loadHabits(Number(journalId));
-  };
-
-  const addJournal = async () => {
-    const name = prompt("Journal name?");
-    if (!name || !name.trim() || !currentUser) return;
-
-    const res = await fetch(`${API}/journals`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_id: currentUser.id,
-        name: name.trim(),
-      }),
-    });
-
-    const newJournal = await res.json();
-
-    setJournals((prev) => [...prev, newJournal]);
-    setSelectedJournalId(newJournal.id);
-    setHabits([]);
-    setSelectedHabitId(null);
+  const handleLogin = async (user) => {
+    const userJournals = await request("/users/" + user.id + "/journals");
+    const firstJournal = userJournals[0];
+    const firstHabits = firstJournal
+      ? await request("/journals/" + firstJournal.id + "/habits")
+      : [];
+    setCurrentUser(user);
+    setJournals(userJournals);
+    setSelectedJournalId(firstJournal?.id ?? null);
+    setHabits(firstHabits);
+    setSelectedHabitId(firstHabits[0]?.id ?? null);
     resetDraftState();
   };
 
+  const switchJournal = async (journalId) => {
+    if (hasUnsavedChanges && !window.confirm("You have unsaved changes. Switch journals anyway?")) return;
+    try {
+      await loadHabits(Number(journalId));
+      setSelectedJournalId(Number(journalId));
+      setNotice("");
+    } catch (error) {
+      setNotice(error.message);
+    }
+  };
+
+  const addJournal = async () => {
+    const name = window.prompt("What would you like to name your journal?");
+    if (!name?.trim() || !currentUser) return;
+    if (hasUnsavedChanges && !window.confirm("You have unsaved changes. Create a new journal anyway?")) return;
+    try {
+      const newJournal = await request("/journals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: currentUser.id, name: name.trim() }),
+      });
+      setJournals((previous) => [...previous, newJournal]);
+      setSelectedJournalId(newJournal.id);
+      setHabits([]);
+      setSelectedHabitId(null);
+      resetDraftState();
+      setNotice("Your new journal is ready.");
+    } catch (error) {
+      setNotice(error.message);
+    }
+  };
+
   const deleteJournal = async () => {
-  if (!selectedJournalId) return;
-
-  if (journals.length <= 1) {
-    alert("You must have at least one journal.");
-    return;
-  }
-
-  const selectedJournal = journals.find(
-    (journal) => journal.id === selectedJournalId
-  );
-
-  const confirmDelete = window.confirm(
-    `Delete "${selectedJournal?.name}" and all habits inside it?`
-  );
-
-  if (!confirmDelete) return;
-
-  const res = await fetch(`${API}/journals/${selectedJournalId}`, {
-    method: "DELETE",
-  });
-
-  if (!res.ok) {
-    const data = await res.json();
-    alert(data.detail || "Could not delete journal.");
-    return;
-  }
-
-  const updatedJournals = journals.filter(
-    (journal) => journal.id !== selectedJournalId
-  );
-
-  setJournals(updatedJournals);
-
-  const nextJournal = updatedJournals[0];
-
-  setSelectedJournalId(nextJournal.id);
-  await loadHabits(nextJournal.id);
-};
+    if (!selectedJournalId) return;
+    if (journals.length <= 1) {
+      setNotice("Keep at least one journal so you have a place for your habits.");
+      return;
+    }
+    if (!window.confirm('Delete "' + selectedJournal?.name + '" and all habits inside it?')) return;
+    try {
+      await request("/journals/" + selectedJournalId, { method: "DELETE" });
+      const remaining = journals.filter((journal) => journal.id !== selectedJournalId);
+      const nextJournal = remaining[0];
+      await loadHabits(nextJournal.id);
+      setJournals(remaining);
+      setSelectedJournalId(nextJournal.id);
+      setNotice("Journal deleted.");
+    } catch (error) {
+      setNotice(error.message);
+    }
+  };
 
   const addHabit = () => {
-    const name = prompt("Habit name?");
-    if (!name || !name.trim()) return;
-
-    const goal = prompt("Goal for this habit?");
-
+    const name = window.prompt("What habit would you like to build?");
+    if (!name?.trim()) return;
+    const goal = window.prompt("What is your goal for this habit?");
     pushHistory();
-
     const newHabit = {
-      id: `temp-${Date.now()}`,
+      id: "temp-" + Date.now(),
       journal_id: selectedJournalId,
       name: name.trim(),
-      goal: goal && goal.trim() ? goal.trim() : "No goal set",
+      goal: goal?.trim() || "No goal set",
       entries: {},
       isNew: true,
       isDirty: true,
     };
-
-    setHabits((prev) => [...prev, newHabit]);
+    setHabits((previous) => [...previous, newHabit]);
     setSelectedHabitId(newHabit.id);
     setHasUnsavedChanges(true);
+    setNotice("");
   };
 
   const updateHabit = (habitId, updates) => {
     pushHistory();
-
-    setHabits((prev) =>
-      prev.map((habit) =>
-        habit.id === habitId
-          ? {
-              ...habit,
-              ...updates,
-              isDirty: true,
-            }
-          : habit
-      )
-    );
-
+    setHabits((previous) => previous.map((habit) =>
+      habit.id === habitId ? { ...habit, ...updates, isDirty: true } : habit
+    ));
     setHasUnsavedChanges(true);
   };
 
   const updateHabitEntry = (habitId, date, value) => {
     pushHistory();
-
-    setHabits((prev) =>
-      prev.map((habit) =>
-        habit.id === habitId
-          ? {
-              ...habit,
-              entries: {
-                ...(habit.entries || {}),
-                [date]: value,
-              },
-              dirtyEntries: {
-                ...(habit.dirtyEntries || {}),
-                [date]: value,
-              },
-              isDirty: true,
-            }
-          : habit
-      )
-    );
-
+    setHabits((previous) => previous.map((habit) =>
+      habit.id === habitId
+        ? {
+            ...habit,
+            entries: { ...(habit.entries || {}), [date]: value },
+            dirtyEntries: { ...(habit.dirtyEntries || {}), [date]: value },
+            isDirty: true,
+          }
+        : habit
+    ));
     setHasUnsavedChanges(true);
   };
 
   const deleteHabit = (habitId) => {
     if (habits.length === 1) {
-      alert("You must have at least one habit.");
+      setNotice("Keep at least one habit in this journal.");
       return;
     }
-
     if (!window.confirm("Delete this habit?")) return;
-
     pushHistory();
-
-    const habitToDelete = habits.find((h) => h.id === habitId);
-
-    if (habitToDelete && !habitToDelete.isNew) {
-      setDeletedHabitIds((prev) => [...prev, habitId]);
-    }
-
-    const updated = habits.filter((h) => h.id !== habitId);
-
-    setHabits(updated);
-    setSelectedHabitId(updated[0]?.id ?? null);
+    const habit = habits.find((item) => item.id === habitId);
+    if (habit && !habit.isNew) setDeletedHabitIds((previous) => [...previous, habitId]);
+    const remaining = habits.filter((item) => item.id !== habitId);
+    setHabits(remaining);
+    setSelectedHabitId(remaining[0]?.id ?? null);
     setHasUnsavedChanges(true);
+    setNotice("");
+  };
+
+  const persistHabit = async (habit) => {
+    let savedHabit = habit;
+    if (habit.isNew) {
+      savedHabit = await request("/habits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ journal_id: selectedJournalId, name: habit.name, goal: habit.goal }),
+      });
+    } else if (habit.isDirty) {
+      savedHabit = await request("/habits/" + habit.id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: habit.name, goal: habit.goal }),
+      });
+    }
+    for (const [date, value] of Object.entries(habit.dirtyEntries || {})) {
+      savedHabit = await request("/habits/" + savedHabit.id + "/entries/" + date, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+    }
+    return savedHabit;
   };
 
   const saveHabit = async (habitId) => {
-    const habit = habits.find((h) => h.id === habitId);
-    if (!habit) return;
-
-    let savedHabit = habit;
-
-    if (habit.isNew) {
-      const res = await fetch(`${API}/habits`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          journal_id: selectedJournalId,
-          name: habit.name,
-          goal: habit.goal,
-        }),
-      });
-
-      savedHabit = await res.json();
-    } else if (habit.isDirty) {
-      const res = await fetch(`${API}/habits/${habit.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: habit.name,
-          goal: habit.goal,
-        }),
-      });
-
-      savedHabit = await res.json();
+    const habit = habits.find((item) => item.id === habitId);
+    if (!habit || isSaving) return;
+    setIsSaving(true);
+    try {
+      const savedHabit = await persistHabit(habit);
+      setHabits((previous) => previous.map((item) => item.id === habitId ? savedHabit : item));
+      setSelectedHabitId(savedHabit.id);
+      setHasUnsavedChanges(
+        deletedHabitIds.length > 0 || habits.some((item) => item.id !== habitId && (item.isDirty || item.isNew))
+      );
+      setUndoStack([]);
+      setRedoStack([]);
+      setNotice(savedHabit.name + " saved.");
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setIsSaving(false);
     }
-
-    const dirtyEntries = habit.dirtyEntries || {};
-
-    for (const [date, value] of Object.entries(dirtyEntries)) {
-      const res = await fetch(`${API}/habits/${savedHabit.id}/entries/${date}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ value }),
-      });
-
-      savedHabit = await res.json();
-    }
-
-    await loadHabits(selectedJournalId);
-    setSelectedHabitId(savedHabit.id);
-    alert(`${savedHabit.name} saved.`);
   };
 
   const saveAllChanges = async () => {
-    for (const habitId of deletedHabitIds) {
-      await fetch(`${API}/habits/${habitId}`, {
-        method: "DELETE",
-      });
-    }
-
-    for (const habit of habits) {
-      let savedHabit = habit;
-
-      if (habit.isNew) {
-        const res = await fetch(`${API}/habits`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            journal_id: selectedJournalId,
-            name: habit.name,
-            goal: habit.goal,
-          }),
-        });
-
-        savedHabit = await res.json();
-      } else if (habit.isDirty) {
-        const res = await fetch(`${API}/habits/${habit.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: habit.name,
-            goal: habit.goal,
-          }),
-        });
-
-        savedHabit = await res.json();
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      for (const habitId of deletedHabitIds) {
+        await request("/habits/" + habitId, { method: "DELETE" });
       }
-
-      const dirtyEntries = habit.dirtyEntries || {};
-
-      for (const [date, value] of Object.entries(dirtyEntries)) {
-        await fetch(`${API}/habits/${savedHabit.id}/entries/${date}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ value }),
-        });
+      for (const habit of habits) {
+        if (habit.isDirty || habit.isNew) await persistHabit(habit);
       }
+      await loadHabits(selectedJournalId);
+      setNotice("All changes saved. Nice work.");
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setIsSaving(false);
     }
-
-    await loadHabits(selectedJournalId);
-    alert("All changes saved.");
   };
 
   const logout = () => {
@@ -381,120 +265,120 @@ function App() {
     setHabits([]);
     setSelectedHabitId(null);
     setShowSettings(false);
+    setNotice("");
     resetDraftState();
   };
 
-  if (!currentUser) {
-    return <AuthPage onLogin={handleLogin} />;
-  }
+  if (!currentUser) return <AuthPage onLogin={handleLogin} />;
+
+  const now = new Date();
+  const todayKey = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+  const completedToday = habits.filter((habit) => (habit.entries?.[todayKey] || 0) >= 0.75).length;
+  const todayRate = habits.length ? Math.round((completedToday / habits.length) * 100) : 0;
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const todayLabel = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(now);
 
   return (
-    <div style={styles.shell}>
-      <div style={styles.topBar}>
-        <div>
-          <h1
-  data-testid="habit-tracker-title"
-  style={styles.appTitle}
->
-  {currentUser?.username
-    ? `${currentUser.username}'s Habit Tracker`
-    : "Habit Tracker"}
-</h1>
-          <div style={styles.statusText}>
-            {hasUnsavedChanges
-              ? "Draft changes waiting to be saved"
-              : "Everything is up to date"}
+    <div className="site-shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true" />
+            <span><span className="brand-name">Habit Journal</span><span className="brand-subtitle">Make room to grow</span></span>
+          </div>
+          <div className="topbar-actions">
+            <span className="avatar" aria-hidden="true">{currentUser.username?.charAt(0).toUpperCase()}</span>
+            <span className="account-name">{currentUser.username}</span>
+            <span className="topbar-separator" aria-hidden="true" />
+            <button className="button button-quiet" onClick={() => setShowSettings(true)}>Settings</button>
+            <button className="button button-secondary" onClick={logout}>Log out</button>
+          </div>
+        </div>
+      </header>
+
+      <main id="main-content" className="dashboard-wrap">
+        <section className="hero-band" aria-label="Today's overview">
+          <div className="hero-copy">
+            <span className="eyebrow">Your daily space</span>
+            <h1 data-testid="habit-tracker-title">{greeting}, {currentUser.username}.</h1>
+            <p>Small steps count. Take a look at where you are, then choose what you want to do today.</p>
+          </div>
+          <div className="today-card">
+            <div>
+              <span className="eyebrow">Today's check-ins</span>
+              <div className="today-number">{completedToday}<small> / {habits.length}</small></div>
+              <p>{habits.length ? "habits completed today" : "Add a habit to get started"}</p>
+            </div>
+            <div>
+              <div className="today-track" aria-label={todayRate + "% of habits completed today"}>
+                <span style={{ width: todayRate + "%" }} />
+              </div>
+              <div className="today-date">{todayLabel}</div>
+            </div>
+          </div>
+        </section>
+
+        <div className="workspace-toolbar">
+          <div className="journal-group">
+            <div className="journal-field">
+              <label className="field-label" htmlFor="journal-select">Current journal</label>
+              <select
+                id="journal-select"
+                className="journal-select"
+                value={selectedJournalId || ""}
+                onChange={(event) => switchJournal(event.target.value)}
+              >
+                {journals.map((journal) => <option key={journal.id} value={journal.id}>{journal.name}</option>)}
+              </select>
+            </div>
+            <button className="button button-secondary" onClick={addJournal}>+ New journal</button>
+            <button className="button button-quiet" onClick={deleteJournal} disabled={journals.length <= 1}>Delete journal</button>
+          </div>
+          <div className="toolbar-actions">
+            <span className={"save-status" + (hasUnsavedChanges ? " is-dirty" : "")}>
+              {hasUnsavedChanges ? "Changes waiting to be saved" : "Everything is up to date"}
+            </span>
+            <button className="button button-secondary" onClick={undo} disabled={!undoStack.length || isSaving}>Undo</button>
+            <button className="button button-secondary" onClick={redo} disabled={!redoStack.length || isSaving}>Redo</button>
+            <button className="button button-primary" onClick={saveAllChanges} disabled={!hasUnsavedChanges || isSaving}>
+              {isSaving ? "Saving…" : "Save all changes"}
+            </button>
           </div>
         </div>
 
-        <div style={styles.actions}>
-          <select
-            style={styles.select}
-            value={selectedJournalId || ""}
-            onChange={(e) => switchJournal(e.target.value)}
-          >
-            {journals.map((journal) => (
-              <option key={journal.id} value={journal.id}>
-                {journal.name}
-              </option>
-            ))}
-          </select>
+        {notice && <div className="app-notice" role="status">{notice}<button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></div>}
 
-          <button style={styles.secondaryButton} onClick={addJournal}>
-            + Journal
-          </button>
-
-          <button style={styles.dangerButton} onClick={deleteJournal}>
-            Delete Journal
-          </button>
-
-          <button style={styles.newHabitButton} onClick={addHabit}>
-            + New Habit
-          </button>
-
-          <button
-            style={{
-              ...styles.secondaryButton,
-              opacity: undoStack.length > 0 ? 1 : 0.5,
-            }}
-            onClick={undo}
-            disabled={undoStack.length === 0}
-          >
-            ↩ Undo
-          </button>
-
-          <button
-            style={{
-              ...styles.secondaryButton,
-              opacity: redoStack.length > 0 ? 1 : 0.5,
-            }}
-            onClick={redo}
-            disabled={redoStack.length === 0}
-          >
-            ↪ Redo
-          </button>
-
-          <button
-            style={{
-              ...styles.saveButton,
-              opacity: hasUnsavedChanges ? 1 : 0.5,
-            }}
-            onClick={saveAllChanges}
-            disabled={!hasUnsavedChanges}
-          >
-            💾 Save All
-          </button>
-
-          <button style={styles.secondaryButton} onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </div>
-
-      <div className="app" style={styles.main}>
-        <Sidebar
-          habits={habits}
-          selectedHabitId={selectedHabitId}
-          setSelectedHabitId={setSelectedHabitId}
-          openSettings={() => setShowSettings(true)}
-        />
-
-        {selectedHabit ? (
-          <HabitPage
-            key={selectedHabit.id}
-            habit={selectedHabit}
-            updateHabit={updateHabit}
-            deleteHabit={deleteHabit}
-            updateHabitEntry={updateHabitEntry}
-            saveHabit={saveHabit}
+        <div className="workspace-grid">
+          <Sidebar
+            habits={habits}
+            selectedHabitId={selectedHabitId}
+            setSelectedHabitId={setSelectedHabitId}
+            openSettings={() => setShowSettings(true)}
+            addHabit={addHabit}
           />
-        ) : (
-          <div style={styles.emptyState}>
-            No habits in this journal yet. Click “+ New Habit” to create one.
-          </div>
-        )}
-      </div>
-
+          {selectedHabit ? (
+            <HabitPage
+              key={selectedHabit.id}
+              habit={selectedHabit}
+              updateHabit={updateHabit}
+              deleteHabit={deleteHabit}
+              updateHabitEntry={updateHabitEntry}
+              saveHabit={saveHabit}
+              saving={isSaving}
+            />
+          ) : (
+            <section className="empty-detail">
+              <span className="empty-orbit" aria-hidden="true" />
+              <span className="eyebrow">A fresh start</span>
+              <h2>Your first habit starts here.</h2>
+              <p>Give it a name, choose a goal, and come back each day to mark your progress.</p>
+              <button className="button button-primary empty-add" onClick={addHabit}>Add a habit</button>
+            </section>
+          )}
+        </div>
+      </main>
       {showSettings && (
         <AccountSettingsModal
           currentUser={currentUser}
@@ -507,113 +391,3 @@ function App() {
 }
 
 export default App;
-
-const styles = {
-  shell: {
-    height: "100vh",
-    overflow: "hidden",
-    background: "#0f172a",
-  },
-
-  topBar: {
-    position: "sticky",
-    top: 0,
-    zIndex: 1000,
-    height: "64px",
-    background: "rgba(2, 6, 23, 0.82)",
-    backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)",
-    borderBottom: "1px solid rgba(148,163,184,.12)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 24px",
-    boxShadow: "0 6px 24px rgba(0,0,0,.25)",
-    color: "white",
-  },
-
-  appTitle: {
-    fontSize: 22,
-    fontWeight: 700,
-  },
-
-  statusText: {
-    fontSize: 13,
-    color: "#94a3b8",
-    marginTop: 2,
-  },
-
-  main: {
-    height: "calc(100vh - 64px)",
-    display: "flex",
-    overflow: "hidden",
-  },
-
-  actions: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-
-  select: {
-    background: "#111827",
-    color: "white",
-    border: "1px solid #374151",
-    padding: "10px 12px",
-    borderRadius: "10px",
-    fontWeight: "600",
-  },
-
-  newHabitButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "10px 16px",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontWeight: "700",
-  },
-
-  secondaryButton: {
-    background: "#111827",
-    color: "white",
-    border: "1px solid #374151",
-    padding: "10px 16px",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontWeight: 600,
-    transition: ".2s",
-  },
-
-  saveButton: {
-    background: "#22c55e",
-    color: "white",
-    border: "none",
-    padding: "10px 18px",
-    borderRadius: "10px",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: ".2s",
-    boxShadow: "0 8px 20px rgba(34,197,94,.25)",
-  },
-
-  emptyState: {
-    flex: 1,
-    color: "white",
-    background: "#0f172a",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "16px",
-  },
-
-  dangerButton: {
-  background: "#7f1d1d",
-  color: "white",
-  border: "1px solid #991b1b",
-  padding: "10px 16px",
-  borderRadius: "10px",
-  cursor: "pointer",
-  fontWeight: 600,
-},
-};

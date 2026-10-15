@@ -1,197 +1,98 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const API = "http://127.0.0.1:8000";
 
-function AccountSettingsModal({
-  currentUser,
-  setCurrentUser,
-  close,
-}) {
+function AccountSettingsModal({ currentUser, setCurrentUser, close }) {
   const [username, setUsername] = useState(currentUser.username);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [settingsError, setSettingsError] = useState("");
   const [settingsSuccess, setSettingsSuccess] = useState("");
 
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") close(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [close]);
+
   const updateUsername = async () => {
     setSettingsError("");
     setSettingsSuccess("");
-
-    const res = await fetch(`${API}/users/${currentUser.id}/username`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setSettingsError(data.detail || "Could not update username");
-      return;
+    try {
+      const response = await fetch(API + "/users/" + currentUser.id + "/username", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setSettingsError(data.detail || "Could not update username.");
+        return;
+      }
+      setCurrentUser(data);
+      setSettingsSuccess("Username updated.");
+    } catch {
+      setSettingsError("Could not connect to the app. Please try again.");
     }
-
-    setCurrentUser(data);
-    setSettingsSuccess("Username updated.");
   };
 
   const updatePassword = async () => {
     setSettingsError("");
     setSettingsSuccess("");
-
-    const res = await fetch(`${API}/users/${currentUser.id}/password`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        current_password: currentPassword,
-        new_password: newPassword,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setSettingsError(data.detail || "Could not update password");
-      return;
+    try {
+      const response = await fetch(API + "/users/" + currentUser.id + "/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setSettingsError(data.detail || "Could not update password.");
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setSettingsSuccess("Password updated.");
+    } catch {
+      setSettingsError("Could not connect to the app. Please try again.");
     }
-
-    setCurrentPassword("");
-    setNewPassword("");
-    setSettingsSuccess("Password updated.");
   };
 
   return (
-    <div style={styles.modalOverlay}>
-      <div style={styles.modal}>
-        <div style={styles.modalHeader}>
-          <h2>Account Settings</h2>
-          <button style={styles.closeButton} onClick={close}>
-            ×
-          </button>
+    <div className="modal-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
+      <div className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow">Your space</span>
+            <h2 id="settings-title">Account settings</h2>
+          </div>
+          <button type="button" className="close-button" aria-label="Close settings" onClick={close}>×</button>
         </div>
-
-        {settingsError && <div style={styles.errorBox}>{settingsError}</div>}
-        {settingsSuccess && <div style={styles.successBox}>{settingsSuccess}</div>}
-
-        <label style={styles.label}>Username</label>
-        <input
-          style={styles.input}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-
-        <button style={styles.saveButton} onClick={updateUsername}>
-          Save Username
-        </button>
-
-        <hr style={styles.divider} />
-
-        <label style={styles.label}>Current Password</label>
-        <input
-          style={styles.input}
-          type="password"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-        />
-
-        <label style={styles.label}>New Password</label>
-        <input
-          style={styles.input}
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-        />
-
-        <button style={styles.saveButton} onClick={updatePassword}>
-          Save Password
-        </button>
+        {settingsError && <div className="form-error" role="alert">{settingsError}</div>}
+        {settingsSuccess && <div className="form-success" role="status">{settingsSuccess}</div>}
+        <section className="settings-section">
+          <h3>Profile name</h3>
+          <p>This is the name you see on your journal.</p>
+          <label className="form-label" htmlFor="settings-username">Username</label>
+          <input id="settings-username" className="form-input" value={username} onChange={(event) => setUsername(event.target.value)} />
+          <button className="button button-primary settings-save" onClick={updateUsername} disabled={!username.trim()}>
+            Save username
+          </button>
+        </section>
+        <section className="settings-section">
+          <h3>Change password</h3>
+          <p>Enter your current password to set a new one.</p>
+          <label className="form-label" htmlFor="current-password">Current password</label>
+          <input id="current-password" className="form-input" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+          <label className="form-label" htmlFor="new-password">New password</label>
+          <input id="new-password" className="form-input" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+          <button className="button button-primary settings-save" onClick={updatePassword} disabled={!currentPassword || !newPassword}>
+            Save password
+          </button>
+        </section>
       </div>
     </div>
   );
 }
 
 export default AccountSettingsModal;
-
-const styles = {
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,.6)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 2000,
-  },
-
-  modal: {
-    width: "420px",
-    background: "#111827",
-    color: "white",
-    border: "1px solid #374151",
-    borderRadius: "16px",
-    padding: "24px",
-  },
-
-  modalHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "16px",
-  },
-
-  closeButton: {
-    background: "transparent",
-    color: "white",
-    border: "none",
-    fontSize: "28px",
-    cursor: "pointer",
-  },
-
-  label: {
-    display: "block",
-    marginTop: "12px",
-    marginBottom: "6px",
-    color: "#cbd5e1",
-    fontSize: "13px",
-  },
-
-  input: {
-    width: "100%",
-    padding: "12px",
-    borderRadius: "10px",
-    border: "1px solid #374151",
-    background: "#020617",
-    color: "white",
-  },
-
-  saveButton: {
-    width: "100%",
-    marginTop: "14px",
-    background: "#22c55e",
-    color: "white",
-    border: "none",
-    padding: "10px 18px",
-    borderRadius: "10px",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  divider: {
-    border: "none",
-    borderTop: "1px solid #374151",
-    margin: "22px 0",
-  },
-
-  errorBox: {
-    background: "#7f1d1d",
-    padding: "10px",
-    borderRadius: "8px",
-    marginBottom: "12px",
-  },
-
-  successBox: {
-    background: "#14532d",
-    padding: "10px",
-    borderRadius: "8px",
-    marginBottom: "12px",
-  },
-};

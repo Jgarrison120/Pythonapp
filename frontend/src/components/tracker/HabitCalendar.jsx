@@ -1,109 +1,72 @@
 import { useMemo } from "react";
-import { calendarStyles as styles } from "./HabitCalendarStyles";
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = Array.from({ length: 31 }, (_, index) => index + 1);
 
-function HabitCalendar({ completionMap = {}, toggleDay, year = 2026 }) {
-  const calendarRows = useMemo(() => {
-    return DAYS.map((day) => {
-      return MONTHS.map((month, monthIndex) => {
-        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-        if (day > daysInMonth) {
-          return {
-            key: `${year}-${monthIndex}-${day}-empty`,
-            isValid: false,
-            day,
-            month,
-          };
-        }
-
-        const date = new Date(year, monthIndex, day);
-
-        return {
-          key: formatDate(date),
-          isValid: true,
-          date,
-          day,
-          month,
-        };
-      });
-    });
-  }, [year]);
-
-  const getColor = (value) => {
-    if (value === 0) return "#1f2937";
-    if (value <= 0.25) return "#93c5fd";
-    if (value <= 0.5) return "#60a5fa";
-    if (value <= 0.75) return "#3b82f6";
-    return "#1d4ed8";
-  };
+function HabitCalendar({ completionMap = {}, toggleDay, year = new Date().getFullYear(), setYear }) {
+  const rows = useMemo(
+    () => DAYS.map((day) => MONTHS.map((month, monthIndex) => {
+      const valid = day <= new Date(year, monthIndex + 1, 0).getDate();
+      const date = valid ? new Date(year, monthIndex, day) : null;
+      const key = valid
+        ? year + "-" + String(monthIndex + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0")
+        : month + "-" + day + "-empty";
+      return { key, valid, date, day, month };
+    })),
+    [year]
+  );
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>📅 Yearly Habit Calendar</h3>
-        <span style={styles.yearBadge}>{year}</span>
+    <section className="calendar-panel" aria-label="Yearly habit calendar">
+      <div className="calendar-heading">
+        <div>
+          <h3>Every day adds up</h3>
+          <p>Tap a day to move through 25%, 50%, 75%, complete, and reset.</p>
+        </div>
+        <div className="calendar-year-controls">
+          <button type="button" className="calendar-year-nav" aria-label="Previous year" onClick={() => setYear(year - 1)}>‹</button>
+          <span className="calendar-year">{year}</span>
+          <button type="button" className="calendar-year-nav" aria-label="Next year" onClick={() => setYear(year + 1)}>›</button>
+        </div>
       </div>
-
-      <div style={styles.calendar}>
-        <div style={styles.monthHeaderRow}>
-          <div style={styles.dayHeaderCell}>Day</div>
-
-          {MONTHS.map((month) => (
-            <div key={month} style={styles.monthHeaderCell}>
-              {month}
+      <p className="calendar-swipe-hint">Swipe sideways to see all months.</p>
+      <div className="calendar-scroll">
+        <div className="calendar-grid">
+          <div className="calendar-row calendar-head">
+            <span className="calendar-day-heading">Day</span>
+            {MONTHS.map((month) => <span key={month} className="calendar-month">{month}</span>)}
+          </div>
+          {rows.map((row, rowIndex) => (
+            <div className="calendar-row" key={DAYS[rowIndex]}>
+              <span className="calendar-day">{DAYS[rowIndex]}</span>
+              {row.map((cell) => {
+                if (!cell.valid) return <span key={cell.key} className="calendar-cell-empty" aria-hidden="true" />;
+                const value = completionMap[cell.key] || 0;
+                const level = Math.min(4, Math.max(0, Math.round(value * 4)));
+                const label = cell.month + " " + cell.day + ", " + year + ": " + Math.round(value * 100) + "% complete";
+                return (
+                  <button
+                    key={cell.key}
+                    type="button"
+                    className="calendar-cell"
+                    data-level={level}
+                    aria-label={label}
+                    title={label}
+                    onClick={() => toggleDay(cell.date)}
+                  />
+                );
+              })}
             </div>
           ))}
         </div>
-
-        {calendarRows.map((row, rowIndex) => (
-          <div key={DAYS[rowIndex]} style={styles.calendarRow}>
-            <div style={styles.dayLabel}>{DAYS[rowIndex]}</div>
-
-            {row.map((cell) => {
-              if (!cell.isValid) {
-                return (
-                  <div
-                    key={cell.key}
-                    style={styles.disabledCell}
-                    title={`${cell.month} ${cell.day} does not exist`}
-                  />
-                );
-              }
-
-              const value = completionMap[cell.key] || 0;
-
-              return (
-                <button
-                  key={cell.key}
-                  type="button"
-                  title={`${cell.month} ${cell.day}, ${year}`}
-                  style={{
-                    ...styles.cell,
-                    background: getColor(value),
-                  }}
-                  onClick={() => toggleDay(cell.date)}
-                />
-              );
-            })}
-          </div>
-        ))}
       </div>
-    </div>
+      <div className="calendar-legend" aria-label="Completion scale">
+        <span>Less</span>
+        {[0, 1, 2, 3, 4].map((level) => <span key={level} className="legend-box" data-level={level} />)}
+        <span>More</span>
+      </div>
+    </section>
   );
-}
-
-function formatDate(date) {
-  const d = new Date(date);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-    .toISOString()
-    .split("T")[0];
 }
 
 export default HabitCalendar;

@@ -1,0 +1,22 @@
+info:
+  name: Create Journals
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/journals
+  body:
+    type: json
+    data: |-
+      {
+        "user_id": "1",
+        "name": "journal 3"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
