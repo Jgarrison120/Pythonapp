@@ -292,8 +292,8 @@ function App() {
       <header className="topbar">
         <div className="topbar-inner">
           <div className="brand">
-            <span className="brand-mark" aria-hidden="true" />
-            <span><span className="brand-name">Habit Journal</span><span className="brand-subtitle">Make room to grow</span></span>
+            <img className="brand-mark" src="/favicon.svg" alt="" />
+            <span><span className="brand-name">hamster wheel</span><span className="brand-subtitle">Keep your momentum</span></span>
           </div>
           <div className="topbar-actions">
             <span className="avatar" aria-hidden="true">{currentUser.username?.charAt(0).toUpperCase()}</span>
@@ -340,6 +340,19 @@ function App() {
                 {journals.map((journal) => <option key={journal.id} value={journal.id}>{journal.name}</option>)}
               </select>
             </div>
+            {habits.length > 0 && (
+              <div className="mobile-habit-field">
+                <label className="field-label" htmlFor="mobile-habit-select">Focus habit</label>
+                <select
+                  id="mobile-habit-select"
+                  className="journal-select"
+                  value={selectedHabit?.id ?? ""}
+                  onChange={(event) => setSelectedHabitId(habits.find((habit) => String(habit.id) === event.target.value)?.id ?? null)}
+                >
+                  {habits.map((habit) => <option key={habit.id} value={habit.id}>{habit.name}</option>)}
+                </select>
+              </div>
+            )}
             <button className="button button-secondary" onClick={addJournal}>+ New journal</button>
             <button className="button button-quiet" onClick={deleteJournal} disabled={journals.length <= 1}>Delete journal</button>
           </div>

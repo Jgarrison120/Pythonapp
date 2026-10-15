@@ -190,7 +190,7 @@ def format_habit(cursor, habit):
 
 @app.get("/")
 def home():
-    return {"message": "Habit Tracker API with users and journals is working"}
+    return {"message": "hamster wheel API with users and journals is working"}
 
 
 @app.post("/auth/register")

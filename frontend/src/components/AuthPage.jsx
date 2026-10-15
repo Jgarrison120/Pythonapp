@@ -35,10 +35,10 @@ function AuthPage({ onLogin }) {
 
   return (
     <main className="auth-page">
-      <section className="auth-story" aria-label="About Habit Journal">
+      <section className="auth-story" aria-label="About hamster wheel">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true" />
-          <span><span className="brand-name">Habit Journal</span><span className="brand-subtitle">Make room to grow</span></span>
+          <img className="brand-mark" src="/favicon.svg" alt="" />
+          <span><span className="brand-name">hamster wheel</span><span className="brand-subtitle">Keep your momentum</span></span>
         </div>
         <div>
           <span className="eyebrow">A little progress, every day</span>

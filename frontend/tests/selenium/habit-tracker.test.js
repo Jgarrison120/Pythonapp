@@ -2,7 +2,7 @@ import { Builder, By, until } from "selenium-webdriver";
 import chrome from "selenium-webdriver/chrome.js";
 import assert from "node:assert/strict";
 
-describe("Habit Journal UI", function () {
+describe("hamster wheel UI", function () {
   let driver;
 
   before(async function () {
@@ -16,6 +16,8 @@ describe("Habit Journal UI", function () {
 
   it("shows sign-in and opens the habit dashboard", async function () {
     await driver.get("http://localhost:5173/");
+    assert.equal(await driver.getTitle(), "hamster wheel — Keep your momentum");
+    assert.equal(await driver.findElement(By.css(".auth-story .brand-name")).getText(), "hamster wheel");
     const intro = await driver.wait(until.elementLocated(By.css(".auth-story h1")), 10000);
     assert.match(await intro.getText(), /Good habits grow/);
     await driver.findElement(By.css(".auth-mode")).click();
@@ -28,9 +30,28 @@ describe("Habit Journal UI", function () {
       10000
     );
     assert.match(await dashboard.getText(), /demo/i);
+    assert.equal(await driver.findElement(By.css(".topbar .brand-name")).getText(), "hamster wheel");
     assert.ok((await driver.findElements(By.css(".habit-item"))).length > 0);
     assert.ok((await driver.findElements(By.css(".calendar-cell"))).length > 300);
     await driver.executeScript("document.documentElement.style.scrollBehavior = 'auto'");
+
+    const dailyTracker = await driver.findElement(By.css("[data-testid='daily-tracker']"));
+    const initialProgress = await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText();
+    const targetProgress = initialProgress === "100%" ? "75%" : "100%";
+    await dailyTracker.findElement(By.xpath(`.//button[contains(@class,'daily-level')][strong[normalize-space()='${targetProgress}']]`)).click();
+    await driver.wait(async () => (await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText()) === targetProgress, 3000);
+    assert.equal(await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText(), targetProgress);
+    assert.match(await driver.findElement(By.css(".save-status")).getText(), /waiting to be saved/);
+    const undoButton = await driver.findElement(By.xpath("//button[normalize-space()='Undo']"));
+    await driver.wait(until.elementIsEnabled(undoButton), 3000);
+    await undoButton.click();
+    await driver.wait(async () => (await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText()) === initialProgress, 3000);
+    assert.equal(await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText(), initialProgress);
+
+    await dailyTracker.findElement(By.css("[aria-label='Previous week']")).click();
+    await driver.wait(async () => (await dailyTracker.findElements(By.css(".daily-today-button"))).length === 1, 3000);
+    await dailyTracker.findElement(By.css(".daily-today-button")).click();
+    await driver.wait(async () => (await dailyTracker.findElements(By.css(".daily-today-button"))).length === 0, 3000);
 
     const displayedYear = Number(await driver.findElement(By.css(".calendar-year")).getText());
     await driver.findElement(By.css("[aria-label='Previous year']")).click();
