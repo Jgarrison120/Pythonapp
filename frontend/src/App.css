@@ -9,6 +9,7 @@
   --green-dark: #205c40;
   --green-light: #dceee0;
   --shadow: 0 18px 50px rgba(33, 78, 48, .07);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 .site-shell { min-height: 100dvh; background: var(--page); }
@@ -116,12 +117,37 @@
 .daily-tracker-controls { padding: 25px clamp(20px,3vw,38px) 27px; background: #fff; }
 .daily-tracker-controls h3, .daily-week-heading h3 { margin: 0 0 3px; font-size: 17px; letter-spacing: -.025em; }
 .daily-tracker-controls p, .daily-week-heading p { margin: 0; color: var(--muted); font-size: 12px; }
-.daily-levels { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; margin-top: 16px; }
-.daily-level { min-height: 68px; padding: 10px 6px; border: 1px solid var(--line); border-radius: 11px; background: #f9fbf9; color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
-.daily-level:hover { transform: translateY(-2px); border-color: #91bfa0; }
-.daily-level.is-selected { background: var(--green); border-color: var(--green); color: #fff; }
-.daily-level strong { font-size: 18px; line-height: 1; font-variant-numeric: tabular-nums; }
-.daily-level span { font-size: 11px; font-weight: 650; }
+.hamster-progress { --stop-size: 74px; --marker-size: 104px; margin-top: 10px; }
+.hamster-progress-stage { position: relative; height: 112px; --stop-size: inherit; --marker-size: inherit; }
+.hamster-progress-rail { position: absolute; left: calc(var(--stop-size) / 2); right: calc(var(--stop-size) / 2); bottom: 13px; height: 12px; border-radius: 99px; background: #deeadf; box-shadow: inset 0 1px 3px rgba(30,75,48,.1); overflow: hidden; }
+.hamster-progress-fill { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--green); transform-origin: left center; transition: transform 260ms var(--ease-in-out); }
+.hamster-progress-marker { position: absolute; left: 0; bottom: 16px; width: var(--marker-size); pointer-events: none; transition: transform 260ms var(--ease-in-out); will-change: transform; }
+.hamster-marker-art { display: block; width: 100%; overflow: visible; }
+.hamster-marker-art:not([data-pose="ready"]) { animation: hamster-bob .65s ease-in-out infinite alternate; }
+.hamster-wheel-rotor { transform-box: fill-box; transform-origin: center; }
+.hamster-marker-art[data-pose="push"] .hamster-wheel-rotor { animation: hamster-wheel-turn 1.4s linear infinite; }
+.hamster-marker-art[data-pose="inside"] .hamster-wheel-rotor { animation: hamster-wheel-turn .95s linear infinite; }
+.hamster-marker-art[data-pose="top"] .hamster-wheel-rotor { animation: hamster-wheel-turn .55s linear infinite; }
+.hamster-marker-art[data-pose="carry"] .hamster-wheel-rotor { animation: hamster-wheel-turn 1.2s linear infinite; }
+.hamster-paw { transform-box: fill-box; transform-origin: top center; }
+.hamster-marker-art:not([data-pose="ready"]) .hamster-paw { animation: hamster-stride .38s ease-in-out infinite alternate; }
+.hamster-marker-art:not([data-pose="ready"]) .hamster-paw-front { animation-direction: alternate-reverse; }
+.hamster-marker-art[data-pose="top"] .hamster-paw, .hamster-marker-art[data-pose="carry"] .hamster-paw { animation-duration: .22s; }
+.hamster-speed-lines { animation: hamster-speed .38s ease-in-out infinite alternate; }
+.hamster-milestones { display: flex; justify-content: space-between; }
+.hamster-milestone { width: var(--stop-size); min-width: 0; padding: 0 2px 4px; border: 0; background: transparent; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.hamster-milestone-dot { width: 18px; height: 18px; border: 3px solid #b8d3bf; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px #fff; transition: background 180ms ease, border-color 180ms ease; }
+.hamster-milestone.is-selected .hamster-milestone-dot { border-color: var(--green); background: var(--green); }
+.hamster-milestone strong { margin-top: 5px; color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; }
+.hamster-milestone span:last-child { font-size: 10px; font-weight: 650; line-height: 1.2; }
+.hamster-milestone.is-selected strong, .hamster-milestone.is-selected span:last-child { color: var(--green-dark); }
+@media (hover: hover) and (pointer: fine) {
+  .hamster-milestone:hover .hamster-milestone-dot { border-color: var(--green); background: var(--green-light); }
+}
+@keyframes hamster-wheel-turn { to { transform: rotate(360deg); } }
+@keyframes hamster-bob { to { transform: translateY(-2px); } }
+@keyframes hamster-stride { to { transform: rotate(23deg); } }
+@keyframes hamster-speed { to { opacity: .45; } }
 .daily-week { padding: 21px clamp(20px,3vw,38px) 26px; border-top: 1px solid var(--line); }
 .daily-week-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .daily-week-actions { display: flex; align-items: center; gap: 6px; }
@@ -136,7 +162,7 @@
 .daily-week-name { color: var(--muted); font-size: 11px; font-weight: 650; }
 .daily-week-day strong { font-size: 17px; line-height: 1; }
 .daily-week-indicator { width: 25px; height: 4px; border-radius: 4px; background: linear-gradient(to right,var(--green) var(--day-progress),#dce9de var(--day-progress)); }
-.daily-level:focus-visible, .daily-week-day:focus-visible, .daily-week-nav:focus-visible, .daily-today-button:focus-visible { outline: 3px solid #64ab7c; outline-offset: 2px; }
+.hamster-milestone:focus-visible, .daily-week-day:focus-visible, .daily-week-nav:focus-visible, .daily-today-button:focus-visible { outline: 3px solid #64ab7c; outline-offset: 2px; }
 .detail-section { margin-top: 27px; }
 .section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 15px; margin-bottom: 15px; }
 .section-heading h3 { margin: 0; font-size: 18px; letter-spacing: -.025em; }
@@ -254,8 +280,7 @@
   .today-card > div:last-child { min-width: 150px; }
   .daily-tracker-main { padding: 25px; }
   .daily-progress { width: 126px; }
-  .daily-levels { gap: 5px; }
-  .daily-level span { font-size: 10px; }
+  .hamster-progress { --stop-size: 64px; --marker-size: 94px; }
   .journal-group, .toolbar-actions { width: 100%; }
   .journal-select { min-width: 0; width: 100%; }
   .journal-field, .mobile-habit-field { flex: 1 1 150px; }
@@ -295,13 +320,15 @@
   .daily-progress { width: 100px; padding: 8px; }
   .daily-progress-inner strong { font-size: 25px; }
   .daily-progress-inner span { font-size: 9px; }
-  .daily-levels { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 4px; }
-  .daily-level { min-height: 63px; padding: 7px 3px; }
-  .daily-level strong { font-size: 15px; }
-  .daily-level span { font-size: 9px; }
+  .hamster-progress { --stop-size: 48px; --marker-size: 80px; }
+  .hamster-progress-stage { height: 95px; }
+  .hamster-progress-rail { height: 10px; }
+  .hamster-milestone strong { font-size: 13px; }
+  .hamster-milestone span:last-child { font-size: 9px; }
   .daily-week-days { gap: 4px; }
   .daily-week-day { min-height: 65px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  .hamster-marker-art, .hamster-wheel-rotor, .hamster-paw, .hamster-speed-lines { animation: none !important; }
 }

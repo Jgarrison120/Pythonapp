@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import HamsterProgressMarker from "./HamsterProgressMarker";
 
 const levels = [
   { value: 0, label: "Not started" },
@@ -20,11 +21,33 @@ function dayAt(date, offset) {
 
 function DailyTracker({ habit, completionMap, updateHabitEntry }) {
   const [selectedDate, setSelectedDate] = useState(() => dayAt(new Date(), 0));
+  const stageRef = useRef(null);
+  const [stageGeometry, setStageGeometry] = useState({ width: 0, stopSize: 74, markerSize: 104 });
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const measure = () => {
+      const styles = getComputedStyle(stage);
+      setStageGeometry({
+        width: stage.clientWidth,
+        stopSize: Number.parseFloat(styles.getPropertyValue("--stop-size")),
+        markerSize: Number.parseFloat(styles.getPropertyValue("--marker-size")),
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
+
   const today = dayAt(new Date(), 0);
   const selectedKey = dateKey(selectedDate);
   const todayKey = dateKey(today);
   const progress = completionMap[selectedKey] || 0;
   const percent = Math.round(progress * 100);
+  const markerX = (stageGeometry.stopSize - stageGeometry.markerSize) / 2
+    + progress * (stageGeometry.width - stageGeometry.stopSize);
   const monday = dayAt(selectedDate, -((selectedDate.getDay() + 6) % 7));
   const week = Array.from({ length: 7 }, (_, index) => dayAt(monday, index));
   const selectedLabel = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(selectedDate);
@@ -58,23 +81,35 @@ function DailyTracker({ habit, completionMap, updateHabitEntry }) {
       <div className="daily-tracker-controls">
         <div>
           <h3>Mark your progress</h3>
-          <p>Choose the point that feels right. You can change it anytime.</p>
+          <p>Choose a milestone. Your hamster will meet you there.</p>
         </div>
-        <div className="daily-levels" role="group" aria-label={`Progress for ${selectedLabel}`}>
-          {levels.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              className={`daily-level${progress === value ? " is-selected" : ""}`}
-              aria-pressed={progress === value}
-              onClick={() => {
-                if (progress !== value) updateHabitEntry(habit.id, selectedKey, value);
-              }}
-            >
-              <strong>{Math.round(value * 100)}%</strong>
-              <span>{label}</span>
-            </button>
-          ))}
+        <div className="hamster-progress">
+          <div className="hamster-progress-stage" ref={stageRef}>
+            <div className="hamster-progress-rail" role="progressbar" aria-label={`Progress for ${selectedLabel}`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={percent}>
+              <span className="hamster-progress-fill" style={{ transform: `scaleX(${progress})` }} />
+            </div>
+            <div className="hamster-progress-marker" style={{ transform: `translateX(${markerX}px)`, visibility: stageGeometry.width ? "visible" : "hidden" }}>
+              <HamsterProgressMarker progress={progress} />
+            </div>
+          </div>
+          <div className="hamster-milestones" role="group" aria-label={`Set progress for ${selectedLabel}`}>
+            {levels.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                className={`hamster-milestone${progress === value ? " is-selected" : ""}`}
+                aria-pressed={progress === value}
+                aria-label={`${Math.round(value * 100)}% — ${label}`}
+                onClick={() => {
+                  if (progress !== value) updateHabitEntry(habit.id, selectedKey, value);
+                }}
+              >
+                <span className="hamster-milestone-dot" aria-hidden="true" />
+                <strong>{Math.round(value * 100)}%</strong>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

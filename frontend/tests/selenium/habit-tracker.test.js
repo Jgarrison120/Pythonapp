@@ -36,17 +36,28 @@ describe("hamster wheel UI", function () {
     await driver.executeScript("document.documentElement.style.scrollBehavior = 'auto'");
 
     const dailyTracker = await driver.findElement(By.css("[data-testid='daily-tracker']"));
-    const initialProgress = await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText();
+    const initialProgress = await dailyTracker.findElement(By.css(".hamster-milestone.is-selected strong")).getText();
     const targetProgress = initialProgress === "100%" ? "75%" : "100%";
-    await dailyTracker.findElement(By.xpath(`.//button[contains(@class,'daily-level')][strong[normalize-space()='${targetProgress}']]`)).click();
-    await driver.wait(async () => (await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText()) === targetProgress, 3000);
-    assert.equal(await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText(), targetProgress);
+    await dailyTracker.findElement(By.xpath(`.//button[contains(@class,'hamster-milestone')][strong[normalize-space()='${targetProgress}']]`)).click();
+    await driver.wait(async () => (await dailyTracker.findElement(By.css(".hamster-milestone.is-selected strong")).getText()) === targetProgress, 3000);
+    assert.equal(await dailyTracker.findElement(By.css(".hamster-milestone.is-selected strong")).getText(), targetProgress);
+    assert.equal(await dailyTracker.findElement(By.css(".hamster-marker-art")).getAttribute("data-pose"), targetProgress === "100%" ? "carry" : "top");
+    assert.equal(await dailyTracker.findElement(By.css(".hamster-progress-rail")).getAttribute("aria-valuenow"), targetProgress.slice(0, -1));
     assert.match(await driver.findElement(By.css(".save-status")).getText(), /waiting to be saved/);
     const undoButton = await driver.findElement(By.xpath("//button[normalize-space()='Undo']"));
     await driver.wait(until.elementIsEnabled(undoButton), 3000);
     await undoButton.click();
-    await driver.wait(async () => (await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText()) === initialProgress, 3000);
-    assert.equal(await dailyTracker.findElement(By.css(".daily-level.is-selected strong")).getText(), initialProgress);
+    await driver.wait(async () => (await dailyTracker.findElement(By.css(".hamster-milestone.is-selected strong")).getText()) === initialProgress, 3000);
+    assert.equal(await dailyTracker.findElement(By.css(".hamster-milestone.is-selected strong")).getText(), initialProgress);
+
+    for (const [value, pose] of [["25%", "push"], ["50%", "inside"], ["75%", "top"], ["100%", "carry"]]) {
+      if (value === initialProgress) continue;
+      await dailyTracker.findElement(By.xpath(`.//button[contains(@class,'hamster-milestone')][strong[normalize-space()='${value}']]`)).click();
+      await driver.wait(async () => (await dailyTracker.findElement(By.css(".hamster-marker-art")).getAttribute("data-pose")) === pose, 3000);
+      await driver.wait(until.elementIsEnabled(undoButton), 3000);
+      await undoButton.click();
+      await driver.wait(async () => (await dailyTracker.findElement(By.css(".hamster-milestone.is-selected strong")).getText()) === initialProgress, 3000);
+    }
 
     await dailyTracker.findElement(By.css("[aria-label='Previous week']")).click();
     await driver.wait(async () => (await dailyTracker.findElements(By.css(".daily-today-button"))).length === 1, 3000);
