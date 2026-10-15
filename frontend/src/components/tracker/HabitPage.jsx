@@ -1,4 +1,5 @@
 import HabitCalendar from "./HabitCalendar";
+import DailyTracker from "./DailyTracker";
 
 import { useState } from "react";
 
@@ -65,9 +66,11 @@ function HabitPage({ habit, updateHabit, deleteHabit, updateHabitEntry, saveHabi
 
   return (
     <article className="habit-detail" aria-label="Habit details">
+      <DailyTracker habit={habit} completionMap={completionMap} updateHabitEntry={updateHabitEntry} />
+
       <div className="detail-header">
         <div className="detail-title-area">
-          <span className="eyebrow">Your focus</span>
+          <span className="eyebrow">About this habit</span>
           <label className="field-label" htmlFor="habit-name">Habit name</label>
           <input
             id="habit-name"

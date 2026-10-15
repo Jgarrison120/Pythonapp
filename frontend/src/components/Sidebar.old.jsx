@@ -25,7 +25,7 @@ function Sidebar({
   return (
     <div style={styles.sidebar}>
       <div>
-        <h2 style={styles.title}>🧠 Habit Journal</h2>
+        <h2 style={styles.title}>hamster wheel</h2>
         <p style={styles.subtitle}>Personal habit dashboard</p>
       </div>
 
